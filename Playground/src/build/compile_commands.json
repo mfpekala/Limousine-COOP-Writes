@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/playground/src/build",
+  "command": "/usr/bin/c++   -I/playground/src -I/playground/src/include    -std=gnu++1z -o CMakeFiles/Playground.dir/runner.cpp.o -c /playground/src/runner.cpp",
+  "file": "/playground/src/runner.cpp"
+}
+]
