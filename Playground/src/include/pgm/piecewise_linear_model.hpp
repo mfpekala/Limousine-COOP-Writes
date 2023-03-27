@@ -289,7 +289,14 @@ size_t make_segmentation(size_t n, size_t epsilon, Fin in, Fout out) {
         if (next_p.first == p.first)
             continue;
         p = next_p;
+        // Tries to add a point to the model
         if (!opt.add_point(p.first, p.second)) {
+            // If it fails that means we need to split the model here
+            // Outputs the current model
+            // NOTE: (Sneaky) if `add_point` fails, it automatically sets the number of
+            // points in the model to zero. This is not a problem for get_segment() because
+            // the rectangle and getCanonical segment do not change when num_points is 0.
+            // Very confusing / sneaky
             out(opt.get_segment());
             opt.add_point(p.first, p.second);
             ++c;

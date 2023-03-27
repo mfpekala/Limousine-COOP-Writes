@@ -70,7 +70,7 @@ void simple_buffered() {
     std::sort(data.begin(), data.end());
 
     // Construct and bulk-load the Dynamic PGM-index
-    const int epsilon = 128; // space-time trade-off parameter
+    const int epsilon = 4; // space-time trade-off parameter
     pgm::BufferedPGMIndex<uint32_t, uint32_t, epsilon> buffered_pgm(data);
 
     // Print some facts about the model
