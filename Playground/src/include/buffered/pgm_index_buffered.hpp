@@ -59,7 +59,7 @@ namespace pgm {
  */
 template<typename K, typename V, size_t Epsilon = 64, size_t EpsilonRecursive = 4, typename Floating = float>
 class BufferedPGMIndex {
-protected:
+public:
     static_assert(Epsilon > 0);
     struct Segment;
     class Iterator;
@@ -398,6 +398,22 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
     data_iterator ix_to_data_iterator(size_t ix) const {
         size_t offset = ix - intercept >= 0 && ix - intercept ? ix - intercept : 0;
         return data.cbegin() + offset;
+    }
+
+    /**
+     * A helper function that returns a pair of arrays for `paddingTop` and `paddingBottom`
+     * as outlined in the plan of attack in the notion
+     * @return a pair of arrays for `paddingTop` and `paddingBottom`
+    */
+   std::pair<std::vector<size_t>, std::vector<size_t>> get_padding() const {
+        std::vector<size_t> padding_top;
+        std::vector<size_t> padding_bottom;
+
+        for (auto p : data) {
+            cout << p.first << " " << p.second << endl;
+        }
+
+        return std::make_pair(padding_top, padding_bottom);
     }
 };
 
