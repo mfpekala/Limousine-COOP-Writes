@@ -57,7 +57,7 @@ namespace pgm {
  * @tparam EpsilonRecursive controls the size of the search range in the internal structure
  * @tparam The floating-point type to use for slopes
  */
-template<typename K, typename V, size_t Epsilon = 64, size_t EpsilonRecursive = 4, typename Floating = float>
+template<typename K, typename V, size_t Epsilon = 64, size_t EpsilonRecursive = 8, typename Floating = float>
 class BufferedPGMIndex {
 public:
     static_assert(Epsilon > 0);
@@ -83,8 +83,20 @@ public:
     size_t n;                           ///< The number of elements this index was built on.
     std::vector<Segment> segments;      ///< The segments composing the index.
     std::vector<size_t> levels_offsets; ///< The starting position of each level in segments[], in reverse order.
+    float fill_ratio = 0.5;             ///< The fill ratio of the buffer, i.e. the ratio between the
+                                        ///< bound the model is trained on vs expected to give.
+    float fill_ratio_recursive = 0.5;   ///< The fill ratio of the buffer, i.e. the ratio between the
+                                        ///< bound the model is trained on vs expected to give.
 
-    // NOTE: In original this is static, loosening for now
+    /**
+     * Constructs the model given data.
+     * @param first the beginning of the data (iterator)
+     * @param last the end of the data (iterator)
+     * @param epsilon the epsilon value to use for searching for data
+     * @param epsilon_recursive the epsilon value to use for searching for segments higher up the tree
+     * @param segments the vector of segments to build the index on
+     * @param levels_offsets the vector of offsets to build the index on
+     */
     template<typename RandomIt>
     void build(RandomIt first, RandomIt last,
                       size_t epsilon, size_t epsilon_recursive,
@@ -109,8 +121,7 @@ public:
         levels_offsets.push_back(0);
         segments.reserve(n / (epsilon * epsilon));
 
-        // Ignores last element, not immediately clear why the secodn `last -= ignore_last` is needed
-        // but in testing it seems to be necessary
+        // Ignores the last element if the key is the max (sentinel) value
         auto ignore_last = std::prev(last)->first == std::numeric_limits<K>::max(); // max() is the sentinel value
         auto last_n = n - ignore_last;
         last -= ignore_last;
@@ -119,43 +130,61 @@ public:
             auto n_segments = internal::make_segmentation_par(last_n, epsilon, in_fun, out_fun);
             if (last_n > 1 && segments.back().slope == 0) {
                 // Here we need to ensure that keys > *(last-1) are approximated to a position == prev_level_size
-                segments.emplace_back(std::prev(last)->first + 1, 0, last_n);
+                // This is done by adding a segment with slope 0 and intercept last_n-1
+                segments.emplace_back(this, std::prev(last)->first + 1, 0, 0);
                 ++n_segments;
             }
-            segments.emplace_back(last_n); // Add the sentinel segment
+            segments.emplace_back(this, last_n); // Add the sentinel segment
             return n_segments;
         };
 
-        bool has_first = true;
+        // Variables for keeping track of the actual data that will float into
+        // the leaf segments
+        size_t cur_seg_size = 0;
         RandomIt seg_first = first;
         RandomIt seg_last = first;
 
         auto in_fun = [&](auto i) {
             auto x = keys[i];
-            if (!has_first) {
+            if (cur_seg_size == 0) {
                 seg_first = std::next(first, i);
-                has_first = true;
             }
+            cur_seg_size++;
             seg_last = std::next(first, i + 1);
             // Here there is an adjustment for inputs with duplicate keys: at the end of a run of duplicate keys equal
             // to x=first[i] such that x+1!=first[i+1], we map the values x+1,...,first[i+1]-1 to their correct rank i
             auto flag = i > 0 && i + 1u < n && x == keys[i - 1] && x != keys[i + 1] && x + 1 != keys[i + 1];
-            return std::pair<K, size_t>(x + flag, i);
+            return std::pair<K, size_t>(x + flag, cur_seg_size);
         };
+        
         auto out_fun = [&](auto cs) {
             // Print seg_first and seg_last
-            has_first = false;
-            segments.emplace_back(cs, seg_first, seg_last);
+            cur_seg_size = 0;
+            segments.emplace_back(this, cs, seg_first, seg_last);
         };
         last_n = build_level(epsilon, in_fun, out_fun);
         levels_offsets.push_back(levels_offsets.back() + last_n + 1);
+
+        // Recursive entries is used for populating the recursive levels of the tree
+        // with the necessary pairs/data to get same segment behaviour with the correct structure
+        EntryVector rec_entries;
 
         // Build upper levels
         while (epsilon_recursive && last_n > 1) {
             // - 2 because of the sentinel segment that exists at every level
             auto offset = levels_offsets[levels_offsets.size() - 2];
-            auto in_fun_rec = [&](auto i) { return std::pair<K, size_t>(segments[offset + i].key, i); };
-            last_n = build_level(epsilon_recursive, in_fun_rec, out_fun);
+            auto in_fun_rec = [&](auto i) {
+                Entry e = segments[offset + i].data[0];
+                rec_entries.push_back(e);
+                std::cout << "Size of previous level: " << last_n << ", Current segment size: " << rec_entries.size() << std::endl;
+                return std::pair<K, size_t>(e.first, rec_entries.size() - 1); 
+            };
+            auto out_fun_rec = [&](auto cs) {
+                // Print seg_first and seg_last
+                segments.emplace_back(this, cs, rec_entries.begin(), rec_entries.end());
+                rec_entries.clear();
+            };
+            last_n = build_level(epsilon_recursive, in_fun_rec, out_fun_rec);
             levels_offsets.push_back(levels_offsets.back() + last_n + 1);
         }
     }
@@ -178,13 +207,18 @@ public:
 
             static constexpr size_t linear_search_threshold = 8 * 64 / sizeof(Segment);
             if constexpr (EpsilonRecursive <= linear_search_threshold) {
-                for (; std::next(lo)->key <= key; ++lo)
+                for (; std::next(lo)->data[0].first <= key; ++lo)
                     continue;
                 it = lo;
             } else {
                 auto level_size = levels_offsets[l + 1] - levels_offsets[l] - 1;
                 auto hi = level_begin + PGM_ADD_EPS(pos, EpsilonRecursive, level_size);
-                it = std::prev(std::upper_bound(lo, hi, key));
+                auto ub = std::upper_bound(lo, hi, key);
+                if (ub == lo) {
+                    it = lo;
+                } else {
+                    it = std::prev(ub);
+                }
             }
         }
         return it;
@@ -214,7 +248,12 @@ public:
             } else {
                 auto level_size = levels_offsets[l + 1] - levels_offsets[l] - 1;
                 auto hi = level_begin + PGM_ADD_EPS(pos, EpsilonRecursive, level_size);
-                it = std::prev(std::upper_bound(lo, hi, key));
+                auto ub = std::upper_bound(lo, hi, key);
+                if (ub == lo) {
+                    it = lo;
+                } else {
+                    it = std::prev(ub);
+                }
             }
         }
         return it;
@@ -223,6 +262,8 @@ public:
 public:
 
     static constexpr size_t epsilon_value = Epsilon;
+    size_t reduced_epsilon = (size_t) ((float) Epsilon * fill_ratio);
+    size_t reduced_epsilon_recursive = (size_t) ((float) EpsilonRecursive * fill_ratio);
 
     /**
      * Constructs an empty index.
@@ -237,6 +278,9 @@ public:
 
     /**
      * Constructs the index on the sorted keys in the range [first, last).
+     * NOTE: Constructs the index obeying reduced epsilon, not the original epsilon.
+     * This allows us to be confident that each segment will be able to absorb at least a certain
+     * number of inserts.
      * @param first, last the range containing the sorted keys to be indexed
      */
     template<typename RandomIt>
@@ -244,7 +288,7 @@ public:
         : n(std::distance(first, last)),
           segments(),
           levels_offsets() {
-        build(first, last, Epsilon, EpsilonRecursive, segments, levels_offsets);
+        build(first, last, reduced_epsilon, reduced_epsilon_recursive, segments, levels_offsets);
     }
 
     /**
@@ -255,13 +299,13 @@ public:
     BufferApproxPos search(const K &key) const {
         auto k = key;
         auto seg_iter = segment_for_key(k);
-        auto ix = std::min<size_t>((*seg_iter)(k), std::next(seg_iter)->intercept);
+        auto ix = (*seg_iter)(k);
         auto data_iter = seg_iter->ix_to_data_iterator(ix);
         Iterator pos = Iterator(this, seg_iter, data_iter);
         Iterator lo = Iterator(pos);
         Iterator hi = Iterator(pos);
-        lo.go_back_by(Epsilon);
-        hi.advance_by(Epsilon);
+        lo.go_back_by(Epsilon + 2);
+        hi.advance_by(Epsilon + 2);
         return {pos, lo, hi};
     }
 
@@ -316,13 +360,11 @@ public:
      * @param key the key of the element to insert
      * @param value the value of the element to insert
      */
-    void insert(const K& key, const V& value) {
-        // NOTE: Just a toy proof-of-concept implementation at present
-        // Just goes and puts stuff in buffer
-        // Does not rebuild the index
-        // Does not scheudle lazy merge (yet)
+    void insert(K key, V value) {
         auto seg = mutable_segment_for_key(key);
-        seg->buffer.push_back(std::make_pair(key, value));
+        Entry e = std::make_pair(key, value);
+        bool needs_merge = seg->insert(e);
+        std::cout << "Needs merge?" << needs_merge << std::endl;
     }
 
     /**
@@ -344,31 +386,68 @@ public:
     size_t size_in_bytes() const { return segments.size() * sizeof(Segment) + levels_offsets.size() * sizeof(size_t); }
 
     Iterator begin() const { return Iterator(this, segments.begin(), segments.front().data.begin()); }
-    Iterator end() const { return Iterator(this, segments.end(), segments.back().data.end()); }
+    Iterator end() const {
+        const auto& last_valid_seg =std::prev(segments.end());
+        return Iterator(this, last_valid_seg, last_valid_seg->data.begin()); 
+    }
+
+    void print_tree() {
+        // print levels_offsets
+        std::cout << "levels_offsets: ";
+        for (auto& i : levels_offsets) {
+            std::cout << i << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "segments size: " << segments.size() << std::endl;
+        size_t level = height();
+        size_t level_start = levels_offsets[level];
+        auto it = segments.begin() + *(levels_offsets.end() - 2);
+        std::cout << "root: " << it->key << std::endl;
+        while (level > 0) {
+            std::cout << "level " << level << ": ";
+            for (size_t i = level_start; i > levels_offsets[level - 1]; i--) {
+                std::cout << segments[i].key << " ";
+            }
+            std::cout << std::endl;
+            level--;
+            level_start = levels_offsets[level];
+        }
+    }
 };
 
 #pragma pack(push, 1)
 
 template<typename K, typename V, size_t Epsilon, size_t EpsilonRecursive, typename Floating>
 struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
-    K key;                  ///< The first key that the segment indexes.
-    Floating slope;         ///< The slope of the segment.
-    int32_t intercept;      ///< The intercept of the segment.
-    EntryVector data;       ///< The data stored in this segment in sorted order by key
-    EntryVector buffer;     ///< A buffer of inserts waiting to come to this segment
+    friend class BufferedPGMIndex;
+    using buffered_pgm_type = BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>;
 
+    const buffered_pgm_type *super; ///< The index this segment belongs to
+    K key;                          ///< The first key that the segment indexes.
+    Floating slope;                 ///< The slope of the segment.
+    int32_t intercept;              ///< The intercept of the segment.
+    size_t num_inplaces;            ///< The number of in-place inserts that have been performed on this segment
+    size_t max_buffer_size = 128;   ///< The size of the buffer for out-of-place inserts
+    float merge_threshold = 0.75;   ///< How full does buffer need to be before trigger a merge/retrain
+    size_t merge_neighbors = 0;     ///< How many neighbors to merge with
+    EntryVector data;               ///< The data stored in this segment in sorted order by key
+    EntryVector buffer;             ///< A buffer of inserts waiting to come to this segment
+ 
     Segment() = default;
 
-    Segment(K key, Floating slope, int32_t intercept) : key(key), slope(slope), intercept(intercept) {};
+    Segment(const buffered_pgm_type *super, K key, Floating slope, int32_t intercept) : super(super), key(key), slope(slope), intercept(intercept) {};
 
-    explicit Segment(size_t n) : key(std::numeric_limits<K>::max()), slope(), intercept(n) {};
+    explicit Segment(const buffered_pgm_type *super, size_t n) : super(super), key(std::numeric_limits<K>::max()), slope(0), intercept(0) {
+        data.push_back(std::make_pair(std::numeric_limits<K>::max(), std::numeric_limits<V>::max()));
+    };
 
     template<typename RandomIt>
     explicit Segment(
+        const buffered_pgm_type *super,
         const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &cs,
         RandomIt first, RandomIt last
     )
-        : key(cs.get_first_x()) {
+        : super(super), key(cs.get_first_x()) {
         auto[cs_slope, cs_intercept] = cs.get_floating_point_segment(key);
         if (cs_intercept > std::numeric_limits<decltype(intercept)>::max())
             throw std::overflow_error("Change the type of Segment::intercept to int64");
@@ -377,6 +456,7 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         size_t distance = std::distance(first, last);
         data.reserve(distance);
         std::copy(first, last, std::back_inserter(data));
+        buffer.reserve(max_buffer_size);
     }
 
     friend inline bool operator<(const Segment &s, const K &k) { return s.key < k; }
@@ -395,9 +475,79 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         return pos > 0 ? size_t(pos) : 0ull;
     }
 
-    data_iterator ix_to_data_iterator(size_t ix) const {
-        size_t offset = ix - intercept >= 0 && ix - intercept ? ix - intercept : 0;
+    /**
+     * Checks if the buffer can absorb another out of place write
+     * @return true if the buffer can absorb another out of place write
+     */
+    inline bool buffer_has_space() const {
+        return buffer.size() >= (size_t) ((float) max_buffer_size) * merge_threshold;
+    }
+
+    data_iterator ix_to_data_iterator(size_t offset) const {
+        if (offset < 0) {
+            return data.cbegin();
+        }
+        if (offset >= data.size()) {
+            return std::prev(data.cend());
+        }
         return data.cbegin() + offset;
+    }
+
+    /**
+     * A function to perform an insert into a segment. Returns a boolean indicating whether the
+     * buffer is full _after_ the insert (in which case the parent should trigger
+     * a merge/retrain). 
+     * NOTE: If the key already exists it updates the value
+     * @return true (parent needs to retrain) or false
+    */
+    bool insert(const Entry &e) {
+        // First check if the key already exists in the buffer
+        auto existing = std::lower_bound(buffer.begin(), buffer.end(), e);
+        if (existing != buffer.end() && existing->first == e.first) {
+            existing->second = e.second;
+            std::cout << "Buffer update" << std::endl;
+            return false;
+        }
+        // Then see if it already exists in the segment
+        existing = std::lower_bound(data.begin(), data.end(), e);
+        if (existing != data.end() && existing->first == e.first) {
+            existing->second = e.second;
+            std::cout << "In-place update" << std::endl;
+            return false;
+        }
+
+        bool is_buffered_insert = false;
+        if (super->reduced_epsilon + num_inplaces >= Epsilon) {
+            // If there isn't space for an in-place insert, make it buffered
+            std::cout << "Buffered insert, no space" << std::endl;
+            is_buffered_insert = true;
+        }
+
+        size_t predicted_pos = (*this)(e.first);
+        size_t actual_pos = std::distance(data.begin(), existing);
+        size_t difference = predicted_pos > actual_pos ? predicted_pos - actual_pos : actual_pos - predicted_pos;
+        if (difference > Epsilon) {
+            // If the predicted position is too far away from the actual position, make it buffered
+            // NOTE: THIS is the true "out-of-place" insert
+            std::cout << "Buffered insert, predicted pos too far away, distance: " << difference << std::endl;
+            is_buffered_insert = true;
+        }
+
+        if (is_buffered_insert) {
+            // Insert into sorted position in buffer
+            auto location = std::lower_bound(buffer.begin(), buffer.end(), e);
+            buffer.insert(location, e);
+            return buffer_has_space();
+        } else {
+            // Insert into sorted position in data
+            std::cout << "In-place insert" << std::endl;
+            data.insert(existing, e);
+            num_inplaces++;
+            
+            return false;
+        }
+        
+        return buffer_has_space();
     }
 
     /**
@@ -409,8 +559,25 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         std::vector<size_t> padding_top;
         std::vector<size_t> padding_bottom;
 
-        for (auto p : data) {
-            cout << p.first << " " << p.second << endl;
+        K last_key;
+        for (size_t ix=0; ix < data.size(); ix++) {
+            auto p = data[ix];
+
+            if (p.first == last_key) {
+                continue;
+            }
+            last_key = p.first;
+
+            auto approx_pos = (*this)(p.first);
+            if (approx_pos < 0) {
+                approx_pos = 0;
+            }
+            if (approx_pos > data.size()) {
+                approx_pos = data.size();
+            }
+
+            padding_top.push_back(ix + Epsilon - approx_pos);
+            padding_bottom.push_back(approx_pos - (ix - Epsilon));
         }
 
         return std::make_pair(padding_top, padding_bottom);
@@ -435,6 +602,10 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Iterator {
     Cursor current;                 //< The current cursor
 
     void advance() {
+        auto end = super->end();
+        if (current.seg_iter == end.current.seg_iter && current.data_iter == end.current.data_iter) {
+            return;
+        }
         current.data_iter++;
         if (current.data_iter == current.seg_iter->data.end()) {
             current.seg_iter++;
@@ -451,6 +622,10 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Iterator {
     }
 
     void go_back() {
+        auto begin = super->begin();
+        if (current.seg_iter == begin.current.seg_iter && current.data_iter == begin.current.data_iter) {
+            return;
+        }
         if (current.data_iter != current.seg_iter->data.begin()) {
             current.data_iter--;
         } else {

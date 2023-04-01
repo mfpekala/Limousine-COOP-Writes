@@ -1,1 +1,1 @@
-/usr/bin/c++     CMakeFiles/Playground.dir/runner.cpp.o  -o Playground 
+/usr/bin/c++  -g   CMakeFiles/Playground.dir/runner.cpp.o  -o Playground 

@@ -313,7 +313,9 @@ size_t make_segmentation_par(size_t n, size_t epsilon, Fin in, Fout out) {
     auto chunk_size = n / parallelism;
     auto c = 0ull;
 
-    if (parallelism == 1 || n < 1ull << 15)
+    // Force not parallel for now
+    bool FORCE_NOT_PARALLEL = true;
+    if (parallelism == 1 || n < 1ull << 15 || FORCE_NOT_PARALLEL)
         return make_segmentation(n, epsilon, in, out);
 
     using X = typename std::invoke_result_t<Fin, size_t>::first_type;

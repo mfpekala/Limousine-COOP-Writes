@@ -119,9 +119,13 @@ vector
 -
 cstdlib
 -
+fstream
+-
 iostream
 -
 algorithm
+-
+string
 -
 pgm/pgm_index.hpp
 /playground/src/pgm/pgm_index.hpp
