@@ -88,7 +88,7 @@ void simple_buffered() {
     pgm::BufferedPGMIndex<uint32_t, uint32_t, epsilon> buffered_pgm(data);
 
     size_t looking_for = 847549551;
-    size_t seg_ix = buffered_pgm.segment_ix_for_key(looking_for);
+    size_t seg_ix = buffered_pgm.by_level_segment_ix_for_key(looking_for, 0);
     std::cout << "Looking for: " << looking_for << ", got: " << seg_ix << std::endl;
 
     /*

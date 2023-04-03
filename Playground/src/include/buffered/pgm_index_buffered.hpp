@@ -167,30 +167,17 @@ public:
         // Recursive entries is used for populating the recursive levels of the tree
         // with the necessary pairs/data to get same segment behaviour with the correct structure
         EntryVector rec_entries;
-        size_t first_child_ix = 0;
-        size_t last_child_ix = 1;
 
         // Build upper levels
         while (epsilon_recursive && last_n > 1) {
             // - 2 because of the sentinel segment that exists at every level
             auto offset = levels_offsets[levels_offsets.size() - 2];
             auto in_fun_rec = [&](auto i) {
-                if (rec_entries.size() == 0) {
-                    first_child_ix = offset + i;
-                }
-                last_child_ix = offset + i + 1;
                 Entry e = segments[offset + i].data[0];
                 rec_entries.push_back(e);
                 return std::pair<K, size_t>(e.first, rec_entries.size() - 1); 
             };
             auto out_fun_rec = [&](auto cs) {
-                // For internal segments, we want to go down and link the children back up to
-                // these guys
-                // NOTE: This is just getting the index this will be at after it's added to end
-                ssize_t this_ix = segments.size();
-                for (size_t child_ix = first_child_ix; child_ix < last_child_ix; ++child_ix) {
-                    segments[child_ix].parent_seg_ix = this_ix;
-                }
                 segments.emplace_back(this, cs, rec_entries.begin(), rec_entries.end());
                 rec_entries.clear();
             };
@@ -200,13 +187,25 @@ public:
     }
 
     /**
-     * Returns the index of the segment responsible for a given key. That is, the rightmost segment
-     * having key <= the sought key.
+     * Helper function that returns what level a segment is in
     */
-    size_t segment_ix_for_key(const K &key) const {
+    size_t level_for_segment_ix(size_t seg_ix) {
+        size_t result = 0;
+        while (result < height - 1) {
+            if (seg_ix < levels_offsets[result]) break;
+            ++result;
+        }
+        return result;
+    }
+
+    /**
+     * Helper function that returns the index of the segment in a given level that should be used
+     * to index a key.
+    */
+    size_t by_level_segment_ix_for_key(const K &key, size_t goal_level) const {
         size_t level = height() - 1;
         size_t cur_seg_ix = first_segment_ix_for_level(level);
-        while (0 < level) {
+        while (goal_level < level) {
             size_t pred_ix = segments[cur_seg_ix].predict_pos(key);
             size_t floor_ix = first_segment_ix_for_level(level - 1);
             size_t ceiling_ix = last_segment_ix_for_level(level - 1);
@@ -230,6 +229,20 @@ public:
     }
 
     /**
+    * A useful function to have during splits, will give you the index of the segment one level above the segment specified
+    * by the index that points into the segment.
+    * NOTE: Returns -1 if it is the root
+    */
+    ssize_t parent_seg_ix(size_t seg_ix) const {
+        size_t level = level_for_segment_ix(seg_ix);
+        if (level >= height() - 1) {
+            // Root segment
+            return -1;
+        }
+        return by_level_segment_ix_for_key(segments[seg_ix].get_first_proper_key(), level+1);
+    }
+
+    /**
      * Returns the segment responsible for a given key, that is, the rightmost segment having key <= the sought key.
      * @param key the value of the element to search for
      * @return an iterator to the segment responsible for the given key
@@ -239,7 +252,7 @@ public:
             return std::prev(std::upper_bound(segments.begin(), segments.begin() + segments_count(), key));
         }
 
-        return segments.begin() + segment_ix_for_key(key);
+        return segments.begin() + by_level_segment_ix_for_key(key, 0);
     }
 
     /**
@@ -253,14 +266,15 @@ public:
             return std::prev(std::upper_bound(segments.begin(), segments.begin() + segments_count(), key));
         }
 
-        return segments.begin() + segment_ix_for_key(key);
+        return segments.begin() + by_level_segment_ix_for_key(key, 0);
     }
 
 public:
 
     static constexpr size_t epsilon_value = Epsilon;
-    size_t reduced_epsilon = (size_t) ((float) Epsilon * fill_ratio);
-    size_t reduced_epsilon_recursive = (size_t) ((float) EpsilonRecursive * fill_ratio);
+    size_t reduced_epsilon_value = (size_t) ((float) Epsilon * fill_ratio);
+    static constexpr size_t epsilon_recursive_value = EpsilonRecursive;
+    size_t reduced_epsilon_recursive_value = (size_t) ((float) EpsilonRecursive * fill_ratio);
 
     /**
      * Constructs an empty index.
@@ -285,7 +299,7 @@ public:
         : n(std::distance(first, last)),
           segments(),
           levels_offsets() {
-        build(first, last, reduced_epsilon, reduced_epsilon_recursive, segments, levels_offsets);
+        build(first, last, reduced_epsilon_value, reduced_epsilon_recursive_value, segments, levels_offsets);
     }
 
     /**
@@ -355,7 +369,7 @@ public:
      * @param value the value of the element to insert
      */
     void insert(K key, V value) {
-        size_t seg_ix = segment_ix_for_key(key);
+        size_t seg_ix = by_level_segment_ix_for_key(key, 0);
         Entry e = std::make_pair(key, value);
         bool needs_split = segments[seg_ix].insert(e);
         if (needs_split) {
@@ -394,12 +408,11 @@ public:
         };
         auto out_fun = [&](auto cs) {
             Segment new_seg = Segment(this, cs, temporary_fill.begin(), temporary_fill.end());
-            new_seg.parent_seg_ix = splitting_seg.parent_seg_ix;
             new_segs.push_back(new_seg);
             temporary_fill.clear();
         };
-        auto build_level = [&](auto epsilon, auto in_fun, auto out_fun) {
-            auto n_segments = internal::make_segmentation_par(n, is_internal ? epsilon : reduced_epsilon, in_fun, out_fun);
+        auto build_segments = [&](auto in_fun, auto out_fun) {
+            auto n_segments = internal::make_segmentation_par(n, is_internal ? epsilon_value : reduced_epsilon_value, in_fun, out_fun);
             return n_segments;
         };
     }
@@ -469,7 +482,6 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
     using buffered_pgm_type = BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>;
 
     const buffered_pgm_type *super; ///< The index this segment belongs to
-    ssize_t parent_seg_ix;          ///< The index of this segments parent in the segments array in the parents class
     K first_x = 0;                  ///< The first x value in this segment
     Floating slope;                 ///< The slope of the segment.
     int32_t intercept;              ///< The intercept of the segment.
@@ -486,10 +498,9 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         super(super),
         first_x(first_x),
         slope(slope),
-        intercept(intercept),
-        parent_seg_ix(-1) {};
+        intercept(intercept) {};
 
-    explicit Segment(const buffered_pgm_type *super, size_t n) : super(super), slope(0), intercept(0), parent_seg_ix(-1) {
+    explicit Segment(const buffered_pgm_type *super, size_t n) : super(super), slope(0), intercept(0) {
         data.push_back(std::make_pair(std::numeric_limits<K>::max(), std::numeric_limits<V>::max()));
     };
 
@@ -499,7 +510,7 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &cs,
         RandomIt first, RandomIt last
     )
-        : super(super), parent_seg_ix(-1) {
+        : super(super) {
         first_x = cs.get_first_x();
         auto[cs_slope, cs_intercept] = cs.get_floating_point_segment(first_x);
         if (cs_intercept > std::numeric_limits<decltype(intercept)>::max())
