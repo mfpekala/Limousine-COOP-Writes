@@ -176,7 +176,6 @@ public:
             auto in_fun_rec = [&](auto i) {
                 Entry e = segments[offset + i].data[0];
                 rec_entries.push_back(e);
-                std::cout << "Size of previous level: " << last_n << ", Current segment size: " << rec_entries.size() << std::endl;
                 return std::pair<K, size_t>(e.first, rec_entries.size() - 1); 
             };
             auto out_fun_rec = [&](auto cs) {
@@ -391,26 +390,35 @@ public:
         return Iterator(this, last_valid_seg, last_valid_seg->data.begin()); 
     }
 
+    /**
+     * A helper function that returns the index of the first segment in a level
+    */
+    size_t first_segment_for_level(size_t level) {
+        return levels_offsets[level];
+    }
+
+    /**
+     * A helper function that returns the index of the last segment in a level
+     * NOTE: This returns the index of a SENTINEL segment (one without real data) 
+     * that's there at the max range of the key to signal the end
+    */
+    size_t last_segment_for_level(size_t level) {
+        return levels_offsets[level + 1] - 1;
+    }
+
     void print_tree() {
-        // print levels_offsets
-        std::cout << "levels_offsets: ";
-        for (auto& i : levels_offsets) {
-            std::cout << i << " ";
-        }
-        std::cout << std::endl;
-        std::cout << "segments size: " << segments.size() << std::endl;
-        size_t level = height();
-        size_t level_start = levels_offsets[level];
-        auto it = segments.begin() + *(levels_offsets.end() - 2);
-        std::cout << "root: " << it->key << std::endl;
-        while (level > 0) {
-            std::cout << "level " << level << ": ";
-            for (size_t i = level_start; i > levels_offsets[level - 1]; i--) {
-                std::cout << segments[i].key << " ";
+        std::cout << "Tree size: " << height() << " levels, " << segments.size() << " segments" << std::endl;
+        // Confusing because the level to height stuff is off by one
+        int level = height() - 1;
+        size_t offset = levels_offsets[level];
+        for (level; level >= 0; --level) {
+            std::cout << "Level: " << level << std::endl;
+            size_t start_ix = first_segment_for_level(level);
+            size_t end_ix = last_segment_for_level(level);
+            for (size_t cur_ix = start_ix; cur_ix < end_ix; ++cur_ix) {
+                std::cout << "(" << segments[cur_ix].first_x << ", " << segments[cur_ix].data[0].first << ")" << " - ";
             }
             std::cout << std::endl;
-            level--;
-            level_start = levels_offsets[level];
         }
     }
 };
@@ -423,7 +431,7 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
     using buffered_pgm_type = BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>;
 
     const buffered_pgm_type *super; ///< The index this segment belongs to
-    K key;                          ///< The first key that the segment indexes.
+    K first_x = 0;                  ///< The first x value in this segment
     Floating slope;                 ///< The slope of the segment.
     int32_t intercept;              ///< The intercept of the segment.
     size_t num_inplaces;            ///< The number of in-place inserts that have been performed on this segment
@@ -435,9 +443,9 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
  
     Segment() = default;
 
-    Segment(const buffered_pgm_type *super, K key, Floating slope, int32_t intercept) : super(super), key(key), slope(slope), intercept(intercept) {};
+    Segment(const buffered_pgm_type *super, K first_x, Floating slope, int32_t intercept) : super(super), first_x(first_x), slope(slope), intercept(intercept) {};
 
-    explicit Segment(const buffered_pgm_type *super, size_t n) : super(super), key(std::numeric_limits<K>::max()), slope(0), intercept(0) {
+    explicit Segment(const buffered_pgm_type *super, size_t n) : super(super), slope(0), intercept(0) {
         data.push_back(std::make_pair(std::numeric_limits<K>::max(), std::numeric_limits<V>::max()));
     };
 
@@ -447,8 +455,9 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &cs,
         RandomIt first, RandomIt last
     )
-        : super(super), key(cs.get_first_x()) {
-        auto[cs_slope, cs_intercept] = cs.get_floating_point_segment(key);
+        : super(super) {
+        first_x = cs.get_first_x();
+        auto[cs_slope, cs_intercept] = cs.get_floating_point_segment(first_x);
         if (cs_intercept > std::numeric_limits<decltype(intercept)>::max())
             throw std::overflow_error("Change the type of Segment::intercept to int64");
         slope = cs_slope;
@@ -459,11 +468,11 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
         buffer.reserve(max_buffer_size);
     }
 
-    friend inline bool operator<(const Segment &s, const K &k) { return s.key < k; }
-    friend inline bool operator<(const K &k, const Segment &s) { return k < s.key; }
-    friend inline bool operator<(const Segment &s, const Segment &t) { return s.key < t.key; }
+    friend inline bool operator<(const Segment &s, const K &k) { return s.data[0].first < k; }
+    friend inline bool operator<(const K &k, const Segment &s) { return k < s.data[0].first; }
+    friend inline bool operator<(const Segment &s, const Segment &t) { return s.data[0].first < t.data[0].first; }
 
-    operator K() { return key; };
+    operator K() { return first_x; };
 
     /**
      * Returns the approximate position of the specified key.
@@ -471,7 +480,7 @@ struct BufferedPGMIndex<K, V, Epsilon, EpsilonRecursive, Floating>::Segment {
      * @return the approximate position of the specified key
      */
     inline size_t operator()(const K &k) const {
-        auto pos = int64_t(slope * (k - key)) + intercept;
+        auto pos = int64_t(slope * (k - first_x)) + intercept;
         return pos > 0 ? size_t(pos) : 0ull;
     }
 

@@ -87,6 +87,7 @@ void simple_buffered() {
     const int epsilon = 2; // space-time trade-off parameter
     pgm::BufferedPGMIndex<uint32_t, uint32_t, epsilon> buffered_pgm(data);
 
+    /*
     // Print some facts about the model
     std::cout << "Height: " << buffered_pgm.height() << std::endl;
     std::cout << "Segment Count: " << buffered_pgm.segments_count() << std::endl;
@@ -106,6 +107,7 @@ void simple_buffered() {
     buffered_pgm.insert(2, 4);
     v = buffered_pgm.find(q);
     std::cout << "Value for key 2 (after insert): " << v << std::endl;
+    */
 
     buffered_pgm.print_tree();
 
@@ -133,7 +135,7 @@ void simple_buffered() {
 
 int generate_padding_stats() {
     // Generate some random key-value pairs to bulk-load the Dynamic PGM-index
-    std::vector<std::pair<uint32_t, uint32_t>> data(100000);
+    std::vector<std::pair<uint32_t, uint32_t>> data(100);
     std::generate(data.begin(), data.end(), [] { return std::make_pair(std::rand(), std::rand()); });
     std::sort(data.begin(), data.end());
 
