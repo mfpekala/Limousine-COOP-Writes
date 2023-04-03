@@ -58,7 +58,7 @@ void simple() {
 
 void simple_buffered() {
     // Generate some random key-value pairs to bulk-load the Dynamic PGM-index
-    std::vector<std::pair<uint32_t, uint32_t>> data_raw(100);
+    std::vector<std::pair<uint32_t, uint32_t>> data_raw(10000);
     std::srand(1);
     std::generate(data_raw.begin(), data_raw.end(), [] { return std::make_pair(std::rand(), std::rand()); });
 
@@ -84,8 +84,12 @@ void simple_buffered() {
     }
 
     // Construct and bulk-load the Dynamic PGM-index
-    const int epsilon = 2; // space-time trade-off parameter
+    const int epsilon = 8; // space-time trade-off parameter
     pgm::BufferedPGMIndex<uint32_t, uint32_t, epsilon> buffered_pgm(data);
+
+    size_t looking_for = 847549551;
+    size_t seg_ix = buffered_pgm.segment_ix_for_key(looking_for);
+    std::cout << "Looking for: " << looking_for << ", got: " << seg_ix << std::endl;
 
     /*
     // Print some facts about the model
@@ -113,14 +117,14 @@ void simple_buffered() {
 
     /*
     // Do a bunch of inserts of random numbers
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 10000; i++) {
         auto q = std::rand();
         auto v = std::rand();
         buffered_pgm.insert(q, v);
     }
     */
 
-    /*
+    
     // Make sure that all the keys from the data made it into the index with the right value
     for (auto &entry : data) {
         auto q = entry.first;
@@ -130,7 +134,7 @@ void simple_buffered() {
             std::cout << "Error: " << q << " " << v << " " << v2 << std::endl;
         }
     }
-    */
+    
 }
 
 int generate_padding_stats() {
