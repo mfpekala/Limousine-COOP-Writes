@@ -96,10 +96,6 @@ void simple_buffered()
     const int epsilon = 4; // space-time trade-off parameter
     pgm::BufferedPGMIndex<uint32_t, uint32_t, epsilon> buffered_pgm(data);
 
-    size_t looking_for = 847549551;
-    size_t seg_ix = buffered_pgm.by_level_segment_ix_for_key(looking_for, 0);
-    std::cout << "Looking for: " << looking_for << ", got: " << seg_ix << std::endl;
-
     /*
     // Print some facts about the model
     std::cout << "Height: " << buffered_pgm.height() << std::endl;
@@ -135,12 +131,15 @@ void simple_buffered()
      */
 
     // Do a bunch of inserts of random numbers
-    for (int i = 0; i < 1050; i++)
+    for (int i = 0; i < 1100; i++)
     {
         auto q = std::rand();
         auto v = std::rand();
         buffered_pgm.insert(q, v);
-        std::cout << "is_sorted: " << buffered_pgm.is_sorted() << std::endl;
+        if (!buffered_pgm.is_sorted())
+        {
+            std::cout << "is_sorted: " << buffered_pgm.is_sorted() << std::endl;
+        }
     }
 
     buffered_pgm.print_tree(1);

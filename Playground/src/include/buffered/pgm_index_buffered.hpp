@@ -483,6 +483,15 @@ namespace pgm
          */
         void split(size_t splitting_ix)
         {
+            std::cout << "Splitting, " << is_sorted() << std::endl;
+            if (!is_sorted())
+            {
+                for (size_t ix = 0; ix < segments.size(); ++ix)
+                {
+                    if (!segments[ix].is_sorted())
+                        std::cout << "ix : " << ix << std::endl;
+                }
+            }
             Segment splitting_seg = segments[splitting_ix];
             bool is_internal = splitting_ix > last_segment_ix_for_level(0);
             // How many total elements are going to be in this newly made thing
@@ -601,7 +610,7 @@ namespace pgm
         {
             for (auto &s : segments)
             {
-                if (!s.is_sorted)
+                if (!s.is_sorted())
                     return false;
             }
             return true;
@@ -833,7 +842,7 @@ namespace pgm
 
         bool is_sorted()
         {
-            std::is_sorted(data);
+            std::is_sorted(data.begin(), data.end());
         }
     };
 
