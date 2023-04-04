@@ -62,7 +62,7 @@ void simple()
 void simple_buffered()
 {
     // Generate some random key-value pairs to bulk-load the Dynamic PGM-index
-    std::vector<std::pair<uint32_t, uint32_t>> data_raw(5000);
+    std::vector<std::pair<uint32_t, uint32_t>> data_raw(600);
     std::srand(1);
     std::generate(data_raw.begin(), data_raw.end(), []
                   { return std::make_pair(std::rand(), std::rand()); });
@@ -93,7 +93,7 @@ void simple_buffered()
     }
 
     // Construct and bulk-load the Dynamic PGM-index
-    const int epsilon = 4; // space-time trade-off parameter
+    const int epsilon = 2; // space-time trade-off parameter
     pgm::BufferedPGMIndex<uint32_t, uint32_t, epsilon> buffered_pgm(data);
 
     /*
@@ -118,7 +118,7 @@ void simple_buffered()
     std::cout << "Value for key 2 (after insert): " << v << std::endl;
     */
 
-    buffered_pgm.print_tree(1);
+    buffered_pgm.print_tree(0);
 
     /**
      * Do a bunch of inserts in a similar range to hopefully trigger a split
@@ -130,19 +130,17 @@ void simple_buffered()
     buffered_pgm.print_tree(1);
      */
 
+    /*
     // Do a bunch of inserts of random numbers
     for (int i = 0; i < 1100; i++)
     {
         auto q = std::rand();
         auto v = std::rand();
         buffered_pgm.insert(q, v);
-        if (!buffered_pgm.is_sorted())
-        {
-            std::cout << "is_sorted: " << buffered_pgm.is_sorted() << std::endl;
-        }
     }
+    */
 
-    buffered_pgm.print_tree(1);
+    // buffered_pgm.print_tree(1);
 
     // Make sure that all the keys from the data made it into the index with the right value
     for (auto &entry : data)
@@ -175,18 +173,7 @@ int generate_padding_stats()
     std::ofstream paddingTopFile;
     std::string run = "A";
     paddingTopFile.open("../paddings/" + std::to_string(epsilon) + "_" + run + "_paddingTops.txt");
-    for (auto &segment : buffered_pgm.segments)
-    {
-        auto [paddingTop, paddingBottom] = segment.get_padding();
-        for (auto &p : paddingTop)
-        {
-            paddingTopFile << p << std::endl;
-        }
-        if (num_sampled >= NUM_SEGMENTS)
-        {
-            break;
-        }
-    }
+
     paddingTopFile.close();
 }
 

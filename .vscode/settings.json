@@ -74,5 +74,6 @@
     "__functional_03": "cpp",
     "__functional_base_03": "cpp",
     "unordered_set": "cpp"
-  }
+  },
+  "cmake.sourceDirectory": "${workspaceFolder}/Playground/src"
 }
