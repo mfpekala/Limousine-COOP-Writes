@@ -150,6 +150,33 @@ runner.cpp.s:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/runner.cpp.s
 .PHONY : runner.cpp.s
 
+shape_experiments.o: shape_experiments.cpp.o
+
+.PHONY : shape_experiments.o
+
+# target to build an object file
+shape_experiments.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.o
+.PHONY : shape_experiments.cpp.o
+
+shape_experiments.i: shape_experiments.cpp.i
+
+.PHONY : shape_experiments.i
+
+# target to preprocess a source file
+shape_experiments.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.i
+.PHONY : shape_experiments.cpp.i
+
+shape_experiments.s: shape_experiments.cpp.s
+
+.PHONY : shape_experiments.s
+
+# target to generate assembly for a file
+shape_experiments.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.s
+.PHONY : shape_experiments.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -162,6 +189,9 @@ help:
 	@echo "... runner.o"
 	@echo "... runner.i"
 	@echo "... runner.s"
+	@echo "... shape_experiments.o"
+	@echo "... shape_experiments.i"
+	@echo "... shape_experiments.s"
 .PHONY : help
 
 

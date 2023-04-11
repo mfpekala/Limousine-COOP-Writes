@@ -1,5 +1,6 @@
 file(REMOVE_RECURSE
   "CMakeFiles/Playground.dir/runner.cpp.o"
+  "CMakeFiles/Playground.dir/shape_experiments.cpp.o"
   "Playground.pdb"
   "Playground"
 )

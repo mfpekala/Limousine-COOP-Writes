@@ -193,6 +193,9 @@ a.out_BINARY_DIR:STATIC=/playground/src/build
 //Value Computed by CMake
 a.out_SOURCE_DIR:STATIC=/playground/src
 
+//Dependencies for target
+buffered_LIB_DEPENDS:STATIC=
+
 
 ########################
 # INTERNAL cache entries

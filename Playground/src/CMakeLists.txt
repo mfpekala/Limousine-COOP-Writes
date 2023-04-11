@@ -15,7 +15,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(${CMAKE_SOURCE_DIR})
-file(GLOB SOURCES "${CMAKE_SOURCE_DIR}/*.cpp")
+file(GLOB SOURCES 
+  "${CMAKE_SOURCE_DIR}/*.cpp"
+)
 include_directories(include)
 
 add_executable(${PROJECT_NAME} ${SOURCES})

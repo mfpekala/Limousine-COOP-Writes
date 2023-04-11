@@ -75,5 +75,10 @@
     "__functional_base_03": "cpp",
     "unordered_set": "cpp"
   },
-  "cmake.sourceDirectory": "${workspaceFolder}/Playground/src"
+  "cmake.sourceDirectory": "${workspaceFolder}/Playground/src",
+  "C_Cpp.errorSquiggles": "enabled",
+  "C_Cpp.intelliSenseEngineFallback": "enabled",
+  "C_Cpp.default.includePath": [
+    "Playground/src/include/buffered/pgm_index_buffered.hpp"
+  ]
 }
