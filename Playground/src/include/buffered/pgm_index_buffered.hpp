@@ -82,10 +82,6 @@ namespace pgm
 
         size_t n; ///< The number of elements this index was built on.
         std::vector<Level> levels;
-        float fill_ratio = 0.5;           ///< The fill ratio of the buffer, i.e. the ratio between the
-                                          ///< bound the model is trained on vs expected to give.
-        float fill_ratio_recursive = 0.5; ///< The fill ratio of the buffer, i.e. the ratio between the
-                                          ///< bound the model is trained on vs expected to give.
 
         /**
          * Constructs the model given data.
@@ -202,6 +198,7 @@ namespace pgm
                 size_t highest_ix = pred_ix + epsilon_recursive_value + 3 < levels[level - 1].size() ? pred_ix + epsilon_recursive_value + 3 : levels[level - 1].size();
                 // TODO: Make this binary search to go faster
                 // Honestly doesn't really matter unless EpsilonRecursive is big, which it usually isn't.
+                lowest_ix = lowest_ix >= highest_ix ? highest_ix - 1 : lowest_ix;
                 new_ix = lowest_ix;
                 size_t check_ix = lowest_ix + 1;
                 while (check_ix < highest_ix && key > levels[level - 1][check_ix].get_first_proper_key())
@@ -240,15 +237,20 @@ namespace pgm
         }
 
     public:
-        size_t epsilon_value = 64;
+        size_t epsilon_value = 128;
+        size_t epsilon_recursive_value = 16;
+        float fill_ratio = 0.75;
+        float fill_ratio_recursive = 0.75;
         size_t reduced_epsilon_value = (size_t)((float)epsilon_value * fill_ratio);
-        size_t epsilon_recursive_value = 4;
         size_t reduced_epsilon_recursive_value = (size_t)((float)epsilon_recursive_value * fill_ratio);
+        size_t max_buffer_size = 512;
 
-        /**
-         * Constructs an empty index.
-         */
-        BufferedPGMIndex() = default;
+        // Helper function to reset these reduced values when passing in something into the constructor
+        void reset_reduced_values()
+        {
+            reduced_epsilon_value = (size_t)((float)epsilon_value * fill_ratio);
+            reduced_epsilon_recursive_value = (size_t)((float)epsilon_recursive_value * fill_ratio);
+        }
 
         /**
          * Constructs the index on the sorted keys in the range [first, last).
@@ -258,20 +260,21 @@ namespace pgm
          * @param first, last the range containing the sorted keys to be indexed
          */
         template <typename RandomIt>
-        BufferedPGMIndex(size_t epsilon, size_t epsilon_recursive, RandomIt first, RandomIt last)
-            : epsilon_value(epsilon), epsilon_recursive_value(epsilon_recursive), n(std::distance(first, last))
+        BufferedPGMIndex(
+            RandomIt first,
+            RandomIt last,
+            size_t epsilon = 128,
+            size_t epsilon_recursive = 16,
+            float fill_ratio = 0.75,
+            float fill_ratio_recursive = 0.75,
+            size_t max_buffer_size = 512) : epsilon_value(epsilon),
+                                            epsilon_recursive_value(epsilon_recursive),
+                                            fill_ratio(fill_ratio),
+                                            fill_ratio_recursive(fill_ratio_recursive),
+                                            max_buffer_size(max_buffer_size),
+                                            n(std::distance(first, last))
         {
-            reduced_epsilon_value = (size_t)((float)epsilon_value * fill_ratio);
-            reduced_epsilon_recursive_value = (size_t)((float)epsilon_recursive_value * fill_ratio);
-            build(first, last, reduced_epsilon_value, reduced_epsilon_recursive_value);
-        }
-
-        template <typename RandomIt>
-        BufferedPGMIndex(size_t epsilon, size_t epsilon_recursive, float fill_ratio, RandomIt first, RandomIt last)
-            : epsilon_value(epsilon), epsilon_recursive_value(epsilon_recursive), fill_ratio(fill_ratio), n(std::distance(first, last))
-        {
-            reduced_epsilon_value = (size_t)((float)epsilon_value * fill_ratio);
-            reduced_epsilon_recursive_value = (size_t)((float)epsilon_recursive_value * fill_ratio);
+            reset_reduced_values();
             build(first, last, reduced_epsilon_value, reduced_epsilon_recursive_value);
         }
 
@@ -637,9 +640,8 @@ namespace pgm
         float slope;                    ///< The slope of the segment.
         int32_t intercept;              ///< The intercept of the segment.
         size_t num_inplaces = 0;        ///< The number of in-place inserts that have been performed on this segment
-        size_t max_buffer_size = 64;    ///< The size of the buffer for out-of-place inserts
         float split_threshold = 1;      ///< How full does buffer need to be before trigger a split/retrain
-        size_t split_neighbors = 0;     ///< How many neighbors to split with
+        size_t split_neighbors = 2;     ///< How many neighbors to split with
         EntryVector data;               ///< The data stored in this segment in sorted order by key
         EntryVector buffer;             ///< A buffer of inserts waiting to come to this segment
 
@@ -671,7 +673,7 @@ namespace pgm
             size_t distance = std::distance(first, last);
             RandomIt cur = first;
             std::copy(first, last, std::back_inserter(data));
-            buffer.reserve(max_buffer_size);
+            buffer.reserve(super->max_buffer_size);
         }
 
         friend inline bool operator<(const Segment &s, const K &k) { return s.data[0].first < k; }
@@ -707,7 +709,7 @@ namespace pgm
          */
         inline bool buffer_has_space() const
         {
-            return buffer.size() >= (size_t)((float)max_buffer_size) * split_threshold;
+            return buffer.size() >= (size_t)((float)super->max_buffer_size) * split_threshold;
         }
 
         data_iterator ix_to_data_iterator(size_t offset) const

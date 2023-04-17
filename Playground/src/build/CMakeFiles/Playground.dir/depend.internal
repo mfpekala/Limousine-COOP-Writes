@@ -7,5 +7,6 @@ CMakeFiles/Playground.dir/runner.cpp.o
  /playground/src/runner.cpp
 CMakeFiles/Playground.dir/shape_experiments.cpp.o
  ../include/buffered/pgm_index_buffered.hpp
+ ../include/debug/progressbar.hpp
  ../include/pgm/piecewise_linear_model.hpp
  /playground/src/shape_experiments.cpp

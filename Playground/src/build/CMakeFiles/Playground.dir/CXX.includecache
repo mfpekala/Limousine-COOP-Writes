@@ -26,6 +26,16 @@ utility
 vector
 -
 
+../include/debug/progressbar.hpp
+iostream
+-
+ostream
+-
+string
+-
+stdexcept
+-
+
 ../include/pgm/piecewise_linear_model.hpp
 algorithm
 -
@@ -77,6 +87,12 @@ algorithm
 -
 string
 -
+chrono
+-
+thread
+-
 buffered/pgm_index_buffered.hpp
 /playground/src/buffered/pgm_index_buffered.hpp
+debug/progressbar.hpp
+/playground/src/debug/progressbar.hpp
 
