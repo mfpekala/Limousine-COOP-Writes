@@ -1,0 +1,9 @@
+type,neighbors,seed,initial_size,time
+in_place,0,1,100000,1379
+out_of_place,0,1,100000,1561
+in_place,8,1,100000,30214
+out_of_place,8,1,100000,1862
+in_place,0,1,300000,10694
+out_of_place,0,1,300000,1780
+in_place,8,1,300000,60708
+out_of_place,8,1,300000,1784

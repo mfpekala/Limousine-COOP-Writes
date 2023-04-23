@@ -487,47 +487,114 @@ void run_height_vs_inserts_experiment()
   fout.close();
 }
 
-void pareto_experiment()
+/**
+ * An experiment that aims to test how the number of inserts affects the size of the segments.
+ * The idea is to compare in-place to out-of-place. We want to show that pure in-place
+ * devolves to b-trees must faster than pure-out-of place.
+ */
+void run_neighbors_vs_size_experiment(std::string filename)
 {
-  size_t n = 10000;
-  size_t num_inserts = 10000;
-  size_t granulatiry = 1000;
-  size_t epsilon = 64;
-  size_t epsilon_recursive = 8;
-  std::vector<float> ffs = {
-      0.25,
-      0.5,
-      0.75,
-  };
-  std::vector<size_t> buf_sizes = {
-      16,
-      64,
-      128,
-      256};
-  /*
-  for (auto ff : ffs)
+  // Parameters for the indices
+  size_t start_epsilon = 64;
+  size_t start_epsilon_recursive = 8;
+  size_t max_buffer_size = 512;
+  // Experiment meta-knobs
+  std::vector<int> seeds = {1, 2, 3, 4, 5};
+  std::vector<int> neighbors = {0, 2, 8, 16};
+  size_t n = 500000;
+  size_t n_inserts = 100000;
+  size_t granularity = 500;
+  std::ofstream fout;
+  fout.open(filename);
+  fout << "neighbors,seed,num_inserts,seg_size" << std::endl;
+  // Repeat the experiment for different seeds
+  // progressbar bar(seeds.size() * 2);
+  for (auto &seed : seeds)
   {
-    for (auto buf_size : buf_sizes)
+    std::cout << "Seed " << seed << std::endl;
+    // Get the data
+    auto data = get_random_data(n, seed);
+    for (auto &neighbor : neighbors)
     {
-      auto data = get_random_data(n, 1);
-      auto index = pgm::BufferedPGMIndex<uint32_t, uint32_t>();
-      index.
-      for (int inserts = 0; inserts < num_inserts; inserts += granularity)
+      auto out_of_place_pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+          data.begin(), data.end(), start_epsilon, start_epsilon_recursive, 1.0, 1.0, max_buffer_size, neighbor);
+      // Out-of-place experiment
+      fout << neighbor << "," << seed << "," << 0 << "," << get_avg_seg_size(out_of_place_pgm) << std::endl;
+      auto out_of_place_results = do_inserts_vs_size_run(out_of_place_pgm, n_inserts, granularity);
+      for (auto &result : out_of_place_results)
       {
-        for (int i = 0; i < granularity; i++)
-        {
-          auto q = std::rand();
-          auto v = std::rand();
-          buffered_pgm.insert(q, v);
-        }
-        size_t avg_seg_size = get_avg_seg_size(data);
+        fout << neighbor << "," << seed << "," << result.first << "," << result.second << std::endl;
       }
     }
+    // Baseline experiment
+    fout << "baseline," << seed << "," << 0 << "," << 0 << std::endl;
+    auto baseline_results = do_baseline_inserts_vs_size_run(data, start_epsilon, start_epsilon_recursive, 1.0, max_buffer_size, n_inserts, granularity);
+    for (auto &result : baseline_results)
+    {
+      fout << "baseline," << seed << "," << result.first << "," << result.second << std::endl;
+    }
+    std::cout << std::endl;
+    // bar.update();
   }
-  */
+  fout.close();
 }
 
+/**
+ * An experiment that aims to test how the number of inserts affects the size of the segments.
+ * The idea is to compare in-place to out-of-place. We want to show that pure in-place
+ * devolves to b-trees must faster than pure-out-of place.
+ */
+void run_neighbors_vs_time_experiment(std::string filename)
+{
+  // Parameters for the indices
+  size_t start_epsilon = 64;
+  size_t start_epsilon_recursive = 8;
+  size_t fill_factor = 0.5;
+  size_t max_buffer_size = 512;
+  // Experiment meta-knobs
+  std::vector<int> seeds = {1, 2, 3};
+  std::vector<int> neighbors = {0, 8};
+  std::vector<int> data_sizes = {100000, 300000, 1000000};
+  size_t n_inserts = 10000;
+  std::ofstream fout;
+  fout.open(filename);
+  fout << "type,neighbors,seed,initial_size,time" << std::endl;
+  // Repeat the experiment for different seeds
+  for (auto &seed : seeds)
+  {
+    std::cout << "Seed " << seed << std::endl;
+    for (auto &initial_size : data_sizes)
+    {
+      std::cout << "  Initial size " << initial_size << std::endl;
+      // Get the data
+      auto data = get_random_data(initial_size, seed);
+      for (auto &neighbor : neighbors)
+      {
+        std::cout << "    Neighbor " << neighbor << std::endl;
+        auto in_place_pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+            data.begin(), data.end(), start_epsilon * 2, start_epsilon_recursive * 2, fill_factor, fill_factor, 0, neighbor);
+        size_t in_place_time = time_inserts(in_place_pgm, n_inserts);
+        fout << "in_place," << neighbor << "," << seed << "," << initial_size << "," << in_place_time << std::endl;
+        auto out_of_place_pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+            data.begin(), data.end(), start_epsilon, start_epsilon_recursive, 1.0, 1.0, max_buffer_size, neighbor);
+        size_t out_of_place_time = time_inserts(out_of_place_pgm, n_inserts);
+        fout << "out_of_place," << neighbor << "," << seed << "," << initial_size << "," << out_of_place_time << std::endl;
+      }
+      /* Baseline experiment
+      fout << "baseline," << seed << "," << 0 << "," << 0 << std::endl;
+      auto baseline_results = do_baseline_inserts_vs_size_run(data, start_epsilon, start_epsilon_recursive, 1.0, max_buffer_size, n_inserts, granularity);
+      for (auto &result : baseline_results)
+      {
+        fout << "baseline," << seed << "," << result.first << "," << result.second << std::endl;
+      } */
+    }
+  }
+  fout.close();
+}
+
+/*
 int main()
 {
-  run_inserts_vs_size_experiment("inserts_vs_baseline.csv");
+  run_neighbors_vs_time_experiment("neighbors_vs_time.csv");
 }
+ */
