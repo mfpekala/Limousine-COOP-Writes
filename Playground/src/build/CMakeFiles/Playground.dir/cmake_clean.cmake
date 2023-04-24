@@ -1,6 +1,10 @@
 file(REMOVE_RECURSE
+  "CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o"
+  "CMakeFiles/Playground.dir/experiments/common.cpp.o"
+  "CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o"
+  "CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o"
+  "CMakeFiles/Playground.dir/old_runner.cpp.o"
   "CMakeFiles/Playground.dir/runner.cpp.o"
-  "CMakeFiles/Playground.dir/shape_experiments.cpp.o"
   "Playground.pdb"
   "Playground"
 )

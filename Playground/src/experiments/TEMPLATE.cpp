@@ -10,10 +10,15 @@
  * - (list of named columns in order and what they represent)
  */
 
-// Input
-// < Define all the Inputs listed above>
+#include "experiments.h"
 
-void run_experiment_name()
+namespace
+{
+  // Input
+  // < Define all the Inputs listed above>
+}
+
+void run_experiment_name(std::string filename)
 {
   return;
 }

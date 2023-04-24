@@ -20,6 +20,23 @@ std::vector<std::pair<uint32_t, uint32_t>> get_random_data(size_t n, int seed)
   return data;
 }
 
+std::vector<std::vector<std::pair<uint32_t, uint32_t>>> get_random_inserts(size_t n, size_t granularity)
+{
+  if (n % granularity != 0)
+  {
+    throw std::runtime_error("n must be a multiple of granularity");
+  }
+  std::vector<std::vector<std::pair<uint32_t, uint32_t>>> result;
+  for (size_t i = 0; i < n; i += granularity)
+  {
+    std::vector<std::pair<uint32_t, uint32_t>> data(granularity);
+    std::generate(data.begin(), data.end(), []
+                  { return std::make_pair(std::rand(), std::rand()); });
+    result.push_back(data);
+  }
+  return result;
+}
+
 // Helper function to get the average segment size at the leaf level
 size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm)
 {
@@ -28,6 +45,7 @@ size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm
   {
     sum += seg.data.size();
   }
+  // std::cout << "sum: " << sum << ", count: " << buffered_pgm.segments_count() << std::endl;
   return sum / buffered_pgm.segments_count();
 }
 
@@ -46,25 +64,18 @@ std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::Buffered
   return std::pair<size_t, std::vector<size_t>>(hist_max, key_vals);
 }
 
-void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t num_inserts)
+void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
 {
-  for (int i = 0; i < num_inserts; i++)
+  for (auto &p : insert_data)
   {
-    auto q = std::rand();
-    auto v = std::rand();
-    buffered_pgm.insert(q, v);
+    buffered_pgm.insert(p.first, p.second);
   }
 }
 
-size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t num_inserts)
+size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
 {
   auto start = std::chrono::high_resolution_clock::now();
-  for (int i = 0; i < num_inserts; i++)
-  {
-    auto q = std::rand();
-    auto v = std::rand();
-    buffered_pgm.insert(q, v);
-  }
+  do_inserts(buffered_pgm, insert_data);
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }

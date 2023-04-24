@@ -16,6 +16,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(${CMAKE_SOURCE_DIR})
 file(GLOB SOURCES 
+  "${CMAKE_SOURCE_DIR}/experiments/*.cpp"
   "${CMAKE_SOURCE_DIR}/*.cpp"
 )
 include_directories(include)

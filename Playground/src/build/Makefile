@@ -123,6 +123,141 @@ Playground/fast:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/build
 .PHONY : Playground/fast
 
+experiments/TEMPLATE.o: experiments/TEMPLATE.cpp.o
+
+.PHONY : experiments/TEMPLATE.o
+
+# target to build an object file
+experiments/TEMPLATE.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o
+.PHONY : experiments/TEMPLATE.cpp.o
+
+experiments/TEMPLATE.i: experiments/TEMPLATE.cpp.i
+
+.PHONY : experiments/TEMPLATE.i
+
+# target to preprocess a source file
+experiments/TEMPLATE.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.i
+.PHONY : experiments/TEMPLATE.cpp.i
+
+experiments/TEMPLATE.s: experiments/TEMPLATE.cpp.s
+
+.PHONY : experiments/TEMPLATE.s
+
+# target to generate assembly for a file
+experiments/TEMPLATE.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.s
+.PHONY : experiments/TEMPLATE.cpp.s
+
+experiments/common.o: experiments/common.cpp.o
+
+.PHONY : experiments/common.o
+
+# target to build an object file
+experiments/common.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/common.cpp.o
+.PHONY : experiments/common.cpp.o
+
+experiments/common.i: experiments/common.cpp.i
+
+.PHONY : experiments/common.i
+
+# target to preprocess a source file
+experiments/common.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/common.cpp.i
+.PHONY : experiments/common.cpp.i
+
+experiments/common.s: experiments/common.cpp.s
+
+.PHONY : experiments/common.s
+
+# target to generate assembly for a file
+experiments/common.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/common.cpp.s
+.PHONY : experiments/common.cpp.s
+
+experiments/inserts_vs_index_power.o: experiments/inserts_vs_index_power.cpp.o
+
+.PHONY : experiments/inserts_vs_index_power.o
+
+# target to build an object file
+experiments/inserts_vs_index_power.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o
+.PHONY : experiments/inserts_vs_index_power.cpp.o
+
+experiments/inserts_vs_index_power.i: experiments/inserts_vs_index_power.cpp.i
+
+.PHONY : experiments/inserts_vs_index_power.i
+
+# target to preprocess a source file
+experiments/inserts_vs_index_power.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.i
+.PHONY : experiments/inserts_vs_index_power.cpp.i
+
+experiments/inserts_vs_index_power.s: experiments/inserts_vs_index_power.cpp.s
+
+.PHONY : experiments/inserts_vs_index_power.s
+
+# target to generate assembly for a file
+experiments/inserts_vs_index_power.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.s
+.PHONY : experiments/inserts_vs_index_power.cpp.s
+
+experiments/inserts_vs_wlatency.o: experiments/inserts_vs_wlatency.cpp.o
+
+.PHONY : experiments/inserts_vs_wlatency.o
+
+# target to build an object file
+experiments/inserts_vs_wlatency.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o
+.PHONY : experiments/inserts_vs_wlatency.cpp.o
+
+experiments/inserts_vs_wlatency.i: experiments/inserts_vs_wlatency.cpp.i
+
+.PHONY : experiments/inserts_vs_wlatency.i
+
+# target to preprocess a source file
+experiments/inserts_vs_wlatency.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.i
+.PHONY : experiments/inserts_vs_wlatency.cpp.i
+
+experiments/inserts_vs_wlatency.s: experiments/inserts_vs_wlatency.cpp.s
+
+.PHONY : experiments/inserts_vs_wlatency.s
+
+# target to generate assembly for a file
+experiments/inserts_vs_wlatency.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.s
+.PHONY : experiments/inserts_vs_wlatency.cpp.s
+
+old_runner.o: old_runner.cpp.o
+
+.PHONY : old_runner.o
+
+# target to build an object file
+old_runner.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/old_runner.cpp.o
+.PHONY : old_runner.cpp.o
+
+old_runner.i: old_runner.cpp.i
+
+.PHONY : old_runner.i
+
+# target to preprocess a source file
+old_runner.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/old_runner.cpp.i
+.PHONY : old_runner.cpp.i
+
+old_runner.s: old_runner.cpp.s
+
+.PHONY : old_runner.s
+
+# target to generate assembly for a file
+old_runner.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/old_runner.cpp.s
+.PHONY : old_runner.cpp.s
+
 runner.o: runner.cpp.o
 
 .PHONY : runner.o
@@ -150,33 +285,6 @@ runner.cpp.s:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/runner.cpp.s
 .PHONY : runner.cpp.s
 
-shape_experiments.o: shape_experiments.cpp.o
-
-.PHONY : shape_experiments.o
-
-# target to build an object file
-shape_experiments.cpp.o:
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.o
-.PHONY : shape_experiments.cpp.o
-
-shape_experiments.i: shape_experiments.cpp.i
-
-.PHONY : shape_experiments.i
-
-# target to preprocess a source file
-shape_experiments.cpp.i:
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.i
-.PHONY : shape_experiments.cpp.i
-
-shape_experiments.s: shape_experiments.cpp.s
-
-.PHONY : shape_experiments.s
-
-# target to generate assembly for a file
-shape_experiments.cpp.s:
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.s
-.PHONY : shape_experiments.cpp.s
-
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -186,12 +294,24 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... Playground"
 	@echo "... edit_cache"
+	@echo "... experiments/TEMPLATE.o"
+	@echo "... experiments/TEMPLATE.i"
+	@echo "... experiments/TEMPLATE.s"
+	@echo "... experiments/common.o"
+	@echo "... experiments/common.i"
+	@echo "... experiments/common.s"
+	@echo "... experiments/inserts_vs_index_power.o"
+	@echo "... experiments/inserts_vs_index_power.i"
+	@echo "... experiments/inserts_vs_index_power.s"
+	@echo "... experiments/inserts_vs_wlatency.o"
+	@echo "... experiments/inserts_vs_wlatency.i"
+	@echo "... experiments/inserts_vs_wlatency.s"
+	@echo "... old_runner.o"
+	@echo "... old_runner.i"
+	@echo "... old_runner.s"
 	@echo "... runner.o"
 	@echo "... runner.i"
 	@echo "... runner.s"
-	@echo "... shape_experiments.o"
-	@echo "... shape_experiments.i"
-	@echo "... shape_experiments.s"
 .PHONY : help
 
 

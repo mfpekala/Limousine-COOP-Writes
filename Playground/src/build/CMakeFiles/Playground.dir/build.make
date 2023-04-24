@@ -57,9 +57,129 @@ include CMakeFiles/Playground.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/Playground.dir/flags.make
 
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o: CMakeFiles/Playground.dir/flags.make
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o: ../experiments/TEMPLATE.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o -c /playground/src/experiments/TEMPLATE.cpp
+
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /playground/src/experiments/TEMPLATE.cpp > CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.i
+
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /playground/src/experiments/TEMPLATE.cpp -o CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.s
+
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.requires:
+
+.PHONY : CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.requires
+
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.provides: CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.requires
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.provides.build
+.PHONY : CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.provides
+
+CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.provides.build: CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o
+
+
+CMakeFiles/Playground.dir/experiments/common.cpp.o: CMakeFiles/Playground.dir/flags.make
+CMakeFiles/Playground.dir/experiments/common.cpp.o: ../experiments/common.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Playground.dir/experiments/common.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/experiments/common.cpp.o -c /playground/src/experiments/common.cpp
+
+CMakeFiles/Playground.dir/experiments/common.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Playground.dir/experiments/common.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /playground/src/experiments/common.cpp > CMakeFiles/Playground.dir/experiments/common.cpp.i
+
+CMakeFiles/Playground.dir/experiments/common.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Playground.dir/experiments/common.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /playground/src/experiments/common.cpp -o CMakeFiles/Playground.dir/experiments/common.cpp.s
+
+CMakeFiles/Playground.dir/experiments/common.cpp.o.requires:
+
+.PHONY : CMakeFiles/Playground.dir/experiments/common.cpp.o.requires
+
+CMakeFiles/Playground.dir/experiments/common.cpp.o.provides: CMakeFiles/Playground.dir/experiments/common.cpp.o.requires
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/common.cpp.o.provides.build
+.PHONY : CMakeFiles/Playground.dir/experiments/common.cpp.o.provides
+
+CMakeFiles/Playground.dir/experiments/common.cpp.o.provides.build: CMakeFiles/Playground.dir/experiments/common.cpp.o
+
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o: CMakeFiles/Playground.dir/flags.make
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o: ../experiments/inserts_vs_index_power.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o -c /playground/src/experiments/inserts_vs_index_power.cpp
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /playground/src/experiments/inserts_vs_index_power.cpp > CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.i
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /playground/src/experiments/inserts_vs_index_power.cpp -o CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.s
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.requires:
+
+.PHONY : CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.requires
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.provides: CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.requires
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.provides.build
+.PHONY : CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.provides
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.provides.build: CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o
+
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o: CMakeFiles/Playground.dir/flags.make
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o: ../experiments/inserts_vs_wlatency.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o -c /playground/src/experiments/inserts_vs_wlatency.cpp
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /playground/src/experiments/inserts_vs_wlatency.cpp > CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.i
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /playground/src/experiments/inserts_vs_wlatency.cpp -o CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.s
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.requires:
+
+.PHONY : CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.requires
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.provides: CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.requires
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.provides.build
+.PHONY : CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.provides
+
+CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.provides.build: CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o
+
+
+CMakeFiles/Playground.dir/old_runner.cpp.o: CMakeFiles/Playground.dir/flags.make
+CMakeFiles/Playground.dir/old_runner.cpp.o: ../old_runner.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/Playground.dir/old_runner.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/old_runner.cpp.o -c /playground/src/old_runner.cpp
+
+CMakeFiles/Playground.dir/old_runner.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Playground.dir/old_runner.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /playground/src/old_runner.cpp > CMakeFiles/Playground.dir/old_runner.cpp.i
+
+CMakeFiles/Playground.dir/old_runner.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Playground.dir/old_runner.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /playground/src/old_runner.cpp -o CMakeFiles/Playground.dir/old_runner.cpp.s
+
+CMakeFiles/Playground.dir/old_runner.cpp.o.requires:
+
+.PHONY : CMakeFiles/Playground.dir/old_runner.cpp.o.requires
+
+CMakeFiles/Playground.dir/old_runner.cpp.o.provides: CMakeFiles/Playground.dir/old_runner.cpp.o.requires
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/old_runner.cpp.o.provides.build
+.PHONY : CMakeFiles/Playground.dir/old_runner.cpp.o.provides
+
+CMakeFiles/Playground.dir/old_runner.cpp.o.provides.build: CMakeFiles/Playground.dir/old_runner.cpp.o
+
+
 CMakeFiles/Playground.dir/runner.cpp.o: CMakeFiles/Playground.dir/flags.make
 CMakeFiles/Playground.dir/runner.cpp.o: ../runner.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/Playground.dir/runner.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object CMakeFiles/Playground.dir/runner.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/runner.cpp.o -c /playground/src/runner.cpp
 
 CMakeFiles/Playground.dir/runner.cpp.i: cmake_force
@@ -81,43 +201,27 @@ CMakeFiles/Playground.dir/runner.cpp.o.provides: CMakeFiles/Playground.dir/runne
 CMakeFiles/Playground.dir/runner.cpp.o.provides.build: CMakeFiles/Playground.dir/runner.cpp.o
 
 
-CMakeFiles/Playground.dir/shape_experiments.cpp.o: CMakeFiles/Playground.dir/flags.make
-CMakeFiles/Playground.dir/shape_experiments.cpp.o: ../shape_experiments.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/Playground.dir/shape_experiments.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Playground.dir/shape_experiments.cpp.o -c /playground/src/shape_experiments.cpp
-
-CMakeFiles/Playground.dir/shape_experiments.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Playground.dir/shape_experiments.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /playground/src/shape_experiments.cpp > CMakeFiles/Playground.dir/shape_experiments.cpp.i
-
-CMakeFiles/Playground.dir/shape_experiments.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Playground.dir/shape_experiments.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /playground/src/shape_experiments.cpp -o CMakeFiles/Playground.dir/shape_experiments.cpp.s
-
-CMakeFiles/Playground.dir/shape_experiments.cpp.o.requires:
-
-.PHONY : CMakeFiles/Playground.dir/shape_experiments.cpp.o.requires
-
-CMakeFiles/Playground.dir/shape_experiments.cpp.o.provides: CMakeFiles/Playground.dir/shape_experiments.cpp.o.requires
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/shape_experiments.cpp.o.provides.build
-.PHONY : CMakeFiles/Playground.dir/shape_experiments.cpp.o.provides
-
-CMakeFiles/Playground.dir/shape_experiments.cpp.o.provides.build: CMakeFiles/Playground.dir/shape_experiments.cpp.o
-
-
 # Object files for target Playground
 Playground_OBJECTS = \
-"CMakeFiles/Playground.dir/runner.cpp.o" \
-"CMakeFiles/Playground.dir/shape_experiments.cpp.o"
+"CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o" \
+"CMakeFiles/Playground.dir/experiments/common.cpp.o" \
+"CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o" \
+"CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o" \
+"CMakeFiles/Playground.dir/old_runner.cpp.o" \
+"CMakeFiles/Playground.dir/runner.cpp.o"
 
 # External object files for target Playground
 Playground_EXTERNAL_OBJECTS =
 
+Playground: CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o
+Playground: CMakeFiles/Playground.dir/experiments/common.cpp.o
+Playground: CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o
+Playground: CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o
+Playground: CMakeFiles/Playground.dir/old_runner.cpp.o
 Playground: CMakeFiles/Playground.dir/runner.cpp.o
-Playground: CMakeFiles/Playground.dir/shape_experiments.cpp.o
 Playground: CMakeFiles/Playground.dir/build.make
 Playground: CMakeFiles/Playground.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable Playground"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/playground/src/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX executable Playground"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Playground.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -125,8 +229,12 @@ CMakeFiles/Playground.dir/build: Playground
 
 .PHONY : CMakeFiles/Playground.dir/build
 
+CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/experiments/TEMPLATE.cpp.o.requires
+CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/experiments/common.cpp.o.requires
+CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o.requires
+CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o.requires
+CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/old_runner.cpp.o.requires
 CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/runner.cpp.o.requires
-CMakeFiles/Playground.dir/requires: CMakeFiles/Playground.dir/shape_experiments.cpp.o.requires
 
 .PHONY : CMakeFiles/Playground.dir/requires
 

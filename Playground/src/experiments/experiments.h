@@ -7,6 +7,7 @@
 #include <chrono>
 #include <thread>
 #include "buffered/pgm_index_buffered.hpp"
+#include "debug/progressbar.hpp"
 
 /* HELPER FUNCTIONS */
 
@@ -16,6 +17,14 @@
  * @param seed - Random seed to use
  */
 std::vector<std::pair<uint32_t, uint32_t>> get_random_data(size_t n, int seed);
+
+/**
+ * Returns a list of lists of uniformly random inserts of size granularity,
+ * such that the total number of elements is n
+ * @param n - The total number of inserts
+ * @param granularity - The number of inserts per list
+ */
+std::vector<std::vector<std::pair<uint32_t, uint32_t>>> get_random_inserts(size_t n, size_t granularity);
 
 /**
  * Gets the average segment size of leaf segments
@@ -35,17 +44,19 @@ std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::Buffered
 /**
  * A helper function to actually do a certain number of inserts on a model
  * @param buffered_pgm - The model to insert into
- * @param num_inserts - How many inserts to do
+ * @param data - The inserts to do
  */
-void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t num_inserts);
+void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
 
 /**
  * A helper function to do a certain number of inserts and return the time it takes
  * @param buffered_pgm - The model to insert into
  * @param num_inserts - How many inserts to time
  */
-size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t num_inserts);
+size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
 
 /* EXPERIMENTS */
 
-void run_inserts_vs_index_power();
+void run_inserts_vs_index_power(std::string filename);
+
+void run_inserts_vs_wlatency(std::string filename);
