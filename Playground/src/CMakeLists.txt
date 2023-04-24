@@ -19,5 +19,6 @@ file(GLOB SOURCES
   "${CMAKE_SOURCE_DIR}/*.cpp"
 )
 include_directories(include)
+include_directories(experiments)
 
 add_executable(${PROJECT_NAME} ${SOURCES})

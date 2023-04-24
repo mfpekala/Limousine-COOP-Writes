@@ -6,5 +6,5 @@ CXX_FLAGS =  -O3 -pg -g   -std=gnu++1z
 
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/playground/src -I/playground/src/include 
+CXX_INCLUDES = -I/playground/src -I/playground/src/include -I/playground/src/experiments 
 

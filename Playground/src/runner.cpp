@@ -9,7 +9,7 @@
 void simple_buffered()
 {
     // Generate some random key-value pairs to bulk-load the Dynamic PGM-index
-    std::vector<std::pair<uint32_t, uint32_t>> data_raw(10000000);
+    std::vector<std::pair<uint32_t, uint32_t>> data_raw(1000000);
     std::srand(1);
     std::generate(data_raw.begin(), data_raw.end(), []
                   { return std::make_pair(std::rand(), std::rand()); });
@@ -43,7 +43,7 @@ void simple_buffered()
     const size_t epsilon = 16; // space-time trade-off parameter
     const size_t epsilon_recursive = 4;
     pgm::BufferedPGMIndex<uint32_t, uint32_t>
-        buffered_pgm(data.begin(), data.end(), epsilon, epsilon_recursive, 1.0, 1.0, 512, 3);
+        buffered_pgm(data.begin(), data.end(), epsilon, epsilon_recursive, 0.75, 0.75, 512, 3);
 
     buffered_pgm.print_tree(1);
 
