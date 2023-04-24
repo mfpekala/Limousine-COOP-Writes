@@ -1,1 +1,1 @@
-/usr/bin/c++   -O0 -g   CMakeFiles/Playground.dir/runner.cpp.o CMakeFiles/Playground.dir/shape_experiments.cpp.o  -o Playground 
+/usr/bin/c++   -O3 -pg -g   CMakeFiles/Playground.dir/runner.cpp.o CMakeFiles/Playground.dir/shape_experiments.cpp.o  -o Playground 

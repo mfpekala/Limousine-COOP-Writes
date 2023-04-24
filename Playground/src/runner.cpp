@@ -9,7 +9,7 @@
 void simple_buffered()
 {
     // Generate some random key-value pairs to bulk-load the Dynamic PGM-index
-    std::vector<std::pair<uint32_t, uint32_t>> data_raw(100000);
+    std::vector<std::pair<uint32_t, uint32_t>> data_raw(1000000);
     std::srand(1);
     std::generate(data_raw.begin(), data_raw.end(), []
                   { return std::make_pair(std::rand(), std::rand()); });
@@ -47,6 +47,7 @@ void simple_buffered()
 
     buffered_pgm.print_tree(0);
 
+    /*
     // Do a bunch of inserts of random numbers
     for (int i = 0; i < 1000; i++)
     {
@@ -54,6 +55,7 @@ void simple_buffered()
         auto v = std::rand();
         buffered_pgm.insert(q, v);
     }
+    */
 
     buffered_pgm.print_tree(0);
 
