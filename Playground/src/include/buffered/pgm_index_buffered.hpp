@@ -428,10 +428,14 @@ namespace pgm
             }
             else
             {
-                // If it's not the root, update the parent's data array
+                // If it's not the root, update the parent and the level
                 // The index of the parent of this segment in the level above
                 size_t parent_ix = by_level_segment_ix_for_key(first_key, split_level + 1);
                 Segment *parent_seg = &levels[split_level + 1][parent_ix];
+
+                // Previously, the parent indexed high_split_ix - low_split_ix
+                // Now, it indexes new_segs.size()
+                parent_seg->n += new_segs.size() - (high_split_ix - low_split_ix);
 
                 // The first question we must answer is whether or not this internal segment
                 // can absorb these new segments.
@@ -599,7 +603,7 @@ namespace pgm
                 }
                 else
                 {
-                    inserting.first = (seg_iter++)->first_x;
+                    inserting.first = (child_iter++)->first_x;
                     inserting.second = new_sizes.back()++;
                 }
 

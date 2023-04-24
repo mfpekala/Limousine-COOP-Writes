@@ -9,7 +9,7 @@
 void simple_buffered()
 {
     // Generate some random key-value pairs to bulk-load the Dynamic PGM-index
-    std::vector<std::pair<uint32_t, uint32_t>> data_raw(1000000);
+    std::vector<std::pair<uint32_t, uint32_t>> data_raw(10000000);
     std::srand(1);
     std::generate(data_raw.begin(), data_raw.end(), []
                   { return std::make_pair(std::rand(), std::rand()); });
@@ -40,24 +40,22 @@ void simple_buffered()
     }
 
     // Construct and bulk-load the Dynamic PGM-index
-    const size_t epsilon = 128; // space-time trade-off parameter
-    const size_t epsilon_recursive = 16;
+    const size_t epsilon = 16; // space-time trade-off parameter
+    const size_t epsilon_recursive = 4;
     pgm::BufferedPGMIndex<uint32_t, uint32_t>
-        buffered_pgm(data.begin(), data.end(), epsilon, epsilon_recursive);
+        buffered_pgm(data.begin(), data.end(), epsilon, epsilon_recursive, 1.0, 1.0, 512, 3);
 
-    buffered_pgm.print_tree(0);
+    buffered_pgm.print_tree(1);
 
-    /*
     // Do a bunch of inserts of random numbers
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < 100000; i++)
     {
         auto q = std::rand() * std::rand();
         auto v = std::rand();
         buffered_pgm.insert(q, v);
     }
-    */
 
-    buffered_pgm.print_tree(0);
+    buffered_pgm.print_tree(1);
 
     // Make sure that all the keys from the data made it into the index with the right value
     size_t num_errors = 0;
@@ -65,9 +63,11 @@ void simple_buffered()
     {
         auto q = entry.first;
         auto v = entry.second;
-        auto LOOKING_FOR = 141696150;
+        auto LOOKING_FOR = 666645590;
+        volatile size_t important = 0;
         if (q == LOOKING_FOR)
         {
+            important += 1;
             std::cout << "STOP" << std::endl;
         }
         auto v2 = buffered_pgm.find(q);
