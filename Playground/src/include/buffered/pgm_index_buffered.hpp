@@ -344,12 +344,11 @@ namespace pgm
                 return *it;
             }
             auto seg = *segment_for_key(key);
-            for (auto &p : seg.buffer)
+            Entry dummy = std::make_pair(key, 0);
+            auto bin_it = std::lower_bound(seg.buffer.begin(), seg.buffer.end(), dummy);
+            if (bin_it != seg.buffer.end() && bin_it->first == key)
             {
-                if (p.first == key)
-                {
-                    return p;
-                }
+                return *bin_it;
             }
             return std::make_pair(std::numeric_limits<K>::max(), std::numeric_limits<V>::max());
         }
@@ -880,16 +879,6 @@ namespace pgm
                     // If there isn't space for an in-place insert, make it buffered
                     is_buffered_insert = true;
                 }
-                // OR if it would get inserted at the beginning make it buffered
-                /*
-                TODO: I have a hunch this code can be deleted, leaving as a comment in case but
-                if all goes correctly it should be impossible to ever reach this code
-                if (existing == data.begin())
-                {
-                    // If the data would end up at the beginning of a segment, make it buffered
-                    is_buffered_insert = true;
-                }
-                */
 
                 size_t predicted_pos = predict_pos(e.first);
                 size_t actual_pos = std::distance(data.begin(), existing);

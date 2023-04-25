@@ -19,6 +19,12 @@ CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.o
  ../include/pgm/piecewise_linear_model.hpp
  /playground/src/experiments/experiments.h
  /playground/src/experiments/inserts_vs_index_power.cpp
+CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.o
+ ../include/buffered/pgm_index_buffered.hpp
+ ../include/debug/progressbar.hpp
+ ../include/pgm/piecewise_linear_model.hpp
+ /playground/src/experiments/experiments.h
+ /playground/src/experiments/inserts_vs_rlatency.cpp
 CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.o
  ../include/buffered/pgm_index_buffered.hpp
  ../include/debug/progressbar.hpp

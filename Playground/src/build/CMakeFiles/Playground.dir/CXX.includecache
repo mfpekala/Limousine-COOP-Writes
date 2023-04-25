@@ -114,6 +114,10 @@ debug/progressbar.hpp
 experiments.h
 /playground/src/experiments/experiments.h
 
+/playground/src/experiments/inserts_vs_rlatency.cpp
+experiments.h
+/playground/src/experiments/experiments.h
+
 /playground/src/experiments/inserts_vs_wlatency.cpp
 experiments.h
 /playground/src/experiments/experiments.h

@@ -27,6 +27,13 @@ std::vector<std::pair<uint32_t, uint32_t>> get_random_data(size_t n, int seed);
 std::vector<std::vector<std::pair<uint32_t, uint32_t>>> get_random_inserts(size_t n, size_t granularity);
 
 /**
+ * Given data returns a random set of keys to read to measure performance
+ * @param data - The base data
+ * @param num_reads - The number of reads to perform
+ */
+std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>> data, size_t num_reads);
+
+/**
  * Gets the average segment size of leaf segments
  * @param buffered_pgm - A pgm model to analyze
  */
@@ -55,8 +62,17 @@ void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::ve
  */
 size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
 
+/**
+ * A helper function to time a certain number of reads on a model
+ * @param buffered_pgm - The model to read from
+ * @param keys - The keys to lookup
+ */
+size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys);
+
 /* EXPERIMENTS */
 
 void run_inserts_vs_index_power(std::string filename);
 
 void run_inserts_vs_wlatency(std::string filename);
+
+void run_inserts_vs_rlatency(std::string filename);

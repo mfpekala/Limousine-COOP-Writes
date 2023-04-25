@@ -204,6 +204,33 @@ experiments/inserts_vs_index_power.cpp.s:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_index_power.cpp.s
 .PHONY : experiments/inserts_vs_index_power.cpp.s
 
+experiments/inserts_vs_rlatency.o: experiments/inserts_vs_rlatency.cpp.o
+
+.PHONY : experiments/inserts_vs_rlatency.o
+
+# target to build an object file
+experiments/inserts_vs_rlatency.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.o
+.PHONY : experiments/inserts_vs_rlatency.cpp.o
+
+experiments/inserts_vs_rlatency.i: experiments/inserts_vs_rlatency.cpp.i
+
+.PHONY : experiments/inserts_vs_rlatency.i
+
+# target to preprocess a source file
+experiments/inserts_vs_rlatency.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.i
+.PHONY : experiments/inserts_vs_rlatency.cpp.i
+
+experiments/inserts_vs_rlatency.s: experiments/inserts_vs_rlatency.cpp.s
+
+.PHONY : experiments/inserts_vs_rlatency.s
+
+# target to generate assembly for a file
+experiments/inserts_vs_rlatency.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.s
+.PHONY : experiments/inserts_vs_rlatency.cpp.s
+
 experiments/inserts_vs_wlatency.o: experiments/inserts_vs_wlatency.cpp.o
 
 .PHONY : experiments/inserts_vs_wlatency.o
@@ -303,6 +330,9 @@ help:
 	@echo "... experiments/inserts_vs_index_power.o"
 	@echo "... experiments/inserts_vs_index_power.i"
 	@echo "... experiments/inserts_vs_index_power.s"
+	@echo "... experiments/inserts_vs_rlatency.o"
+	@echo "... experiments/inserts_vs_rlatency.i"
+	@echo "... experiments/inserts_vs_rlatency.s"
 	@echo "... experiments/inserts_vs_wlatency.o"
 	@echo "... experiments/inserts_vs_wlatency.i"
 	@echo "... experiments/inserts_vs_wlatency.s"

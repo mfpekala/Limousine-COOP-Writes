@@ -37,6 +37,18 @@ std::vector<std::vector<std::pair<uint32_t, uint32_t>>> get_random_inserts(size_
   return result;
 }
 
+std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>> data, size_t num_reads)
+{
+  // Pick num_reads random elements from data
+  std::vector<uint32_t> result;
+  for (size_t i = 0; i < num_reads; i++)
+  {
+    size_t ix = std::rand() % data.size();
+    result.push_back(data[ix].first);
+  }
+  return result;
+}
+
 // Helper function to get the average segment size at the leaf level
 size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm)
 {
@@ -76,6 +88,17 @@ size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std
 {
   auto start = std::chrono::high_resolution_clock::now();
   do_inserts(buffered_pgm, insert_data);
+  auto end = std::chrono::high_resolution_clock::now();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+}
+
+size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys)
+{
+  auto start = std::chrono::high_resolution_clock::now();
+  for (auto &key : keys)
+  {
+    buffered_pgm.find(key);
+  }
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
