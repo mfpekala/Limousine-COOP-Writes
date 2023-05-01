@@ -50,6 +50,10 @@ Just contains auto-generated build files and the like. The most important thing 
 
 The experiment runner. A bit tedious, but import the experiment you want to run and call it with a sensibly named filename.
 
+## `results`
+
+CSVs from experiment runs and python notebooks that generate graphs. The most important file in here is `metrics/schema.py` which contains information about how to parse more advanced index metrics produced by some experiments.
+
 ## Make Commands (from `src`)
 
 - `make compile` - Compiles the entire project.
