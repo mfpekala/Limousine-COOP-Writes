@@ -177,6 +177,33 @@ experiments/common.cpp.s:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/common.cpp.s
 .PHONY : experiments/common.cpp.s
 
+experiments/insert_metrics.o: experiments/insert_metrics.cpp.o
+
+.PHONY : experiments/insert_metrics.o
+
+# target to build an object file
+experiments/insert_metrics.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/insert_metrics.cpp.o
+.PHONY : experiments/insert_metrics.cpp.o
+
+experiments/insert_metrics.i: experiments/insert_metrics.cpp.i
+
+.PHONY : experiments/insert_metrics.i
+
+# target to preprocess a source file
+experiments/insert_metrics.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/insert_metrics.cpp.i
+.PHONY : experiments/insert_metrics.cpp.i
+
+experiments/insert_metrics.s: experiments/insert_metrics.cpp.s
+
+.PHONY : experiments/insert_metrics.s
+
+# target to generate assembly for a file
+experiments/insert_metrics.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/insert_metrics.cpp.s
+.PHONY : experiments/insert_metrics.cpp.s
+
 experiments/inserts_vs_index_power.o: experiments/inserts_vs_index_power.cpp.o
 
 .PHONY : experiments/inserts_vs_index_power.o
@@ -258,6 +285,33 @@ experiments/inserts_vs_wlatency.cpp.s:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_wlatency.cpp.s
 .PHONY : experiments/inserts_vs_wlatency.cpp.s
 
+experiments/read_inserted.o: experiments/read_inserted.cpp.o
+
+.PHONY : experiments/read_inserted.o
+
+# target to build an object file
+experiments/read_inserted.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/read_inserted.cpp.o
+.PHONY : experiments/read_inserted.cpp.o
+
+experiments/read_inserted.i: experiments/read_inserted.cpp.i
+
+.PHONY : experiments/read_inserted.i
+
+# target to preprocess a source file
+experiments/read_inserted.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/read_inserted.cpp.i
+.PHONY : experiments/read_inserted.cpp.i
+
+experiments/read_inserted.s: experiments/read_inserted.cpp.s
+
+.PHONY : experiments/read_inserted.s
+
+# target to generate assembly for a file
+experiments/read_inserted.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/read_inserted.cpp.s
+.PHONY : experiments/read_inserted.cpp.s
+
 old_runner.o: old_runner.cpp.o
 
 .PHONY : old_runner.o
@@ -327,6 +381,9 @@ help:
 	@echo "... experiments/common.o"
 	@echo "... experiments/common.i"
 	@echo "... experiments/common.s"
+	@echo "... experiments/insert_metrics.o"
+	@echo "... experiments/insert_metrics.i"
+	@echo "... experiments/insert_metrics.s"
 	@echo "... experiments/inserts_vs_index_power.o"
 	@echo "... experiments/inserts_vs_index_power.i"
 	@echo "... experiments/inserts_vs_index_power.s"
@@ -336,6 +393,9 @@ help:
 	@echo "... experiments/inserts_vs_wlatency.o"
 	@echo "... experiments/inserts_vs_wlatency.i"
 	@echo "... experiments/inserts_vs_wlatency.s"
+	@echo "... experiments/read_inserted.o"
+	@echo "... experiments/read_inserted.i"
+	@echo "... experiments/read_inserted.s"
 	@echo "... old_runner.o"
 	@echo "... old_runner.i"
 	@echo "... old_runner.s"

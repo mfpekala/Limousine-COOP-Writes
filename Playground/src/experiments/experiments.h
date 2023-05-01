@@ -76,3 +76,7 @@ void run_inserts_vs_index_power(std::string filename);
 void run_inserts_vs_wlatency(std::string filename);
 
 void run_inserts_vs_rlatency(std::string filename);
+
+void run_insert_metrics(std::string filename);
+
+void read_inserted(std::string filename);

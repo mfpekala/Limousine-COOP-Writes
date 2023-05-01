@@ -9,6 +9,6 @@
 
 int main(int argc, char **argv)
 {
-    run_inserts_vs_rlatency("new_rlatency.csv");
+    run_insert_metrics("new_rlatency.csv");
     return 0;
 }

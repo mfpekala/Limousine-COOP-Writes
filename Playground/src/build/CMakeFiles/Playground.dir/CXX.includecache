@@ -47,6 +47,20 @@ utility
 -
 vector
 -
+chrono
+-
+debug/metrics.hpp
+../include/buffered/debug/metrics.hpp
+
+../include/debug/metrics.hpp
+cstddef
+-
+cstdint
+-
+vector
+-
+string
+-
 
 ../include/debug/progressbar.hpp
 iostream
@@ -110,6 +124,10 @@ buffered/pgm_index_buffered.hpp
 debug/progressbar.hpp
 /playground/src/experiments/debug/progressbar.hpp
 
+/playground/src/experiments/insert_metrics.cpp
+experiments.h
+/playground/src/experiments/experiments.h
+
 /playground/src/experiments/inserts_vs_index_power.cpp
 experiments.h
 /playground/src/experiments/experiments.h
@@ -119,6 +137,10 @@ experiments.h
 /playground/src/experiments/experiments.h
 
 /playground/src/experiments/inserts_vs_wlatency.cpp
+experiments.h
+/playground/src/experiments/experiments.h
+
+/playground/src/experiments/read_inserted.cpp
 experiments.h
 /playground/src/experiments/experiments.h
 

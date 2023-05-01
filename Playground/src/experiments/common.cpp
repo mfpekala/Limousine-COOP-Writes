@@ -44,7 +44,11 @@ std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>
   for (size_t i = 0; i < num_reads; i++)
   {
     size_t ix = std::rand() % data.size();
-    result.push_back(data[ix].first);
+    auto val = data[ix].first;
+    // TODO: Fix this, it's a problem with the iterators
+    if (val > 2000000000)
+      continue;
+    result.push_back(val);
   }
   return result;
 }
@@ -97,6 +101,7 @@ size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::
   auto start = std::chrono::high_resolution_clock::now();
   for (auto &key : keys)
   {
+    // std::cout << "about to read " << key << std::endl;
     buffered_pgm.find(key);
   }
   auto end = std::chrono::high_resolution_clock::now();

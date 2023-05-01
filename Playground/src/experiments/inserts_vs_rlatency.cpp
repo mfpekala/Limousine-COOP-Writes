@@ -34,10 +34,10 @@ namespace
   // Input
   size_t epsilon = 128;
   size_t epsilon_recursive = 16;
-  size_t n = 1000000;
-  size_t num_inserts = 10000;
-  size_t granularity = 1000;
-  size_t num_reads = 10000;
+  size_t n = 100000;
+  size_t num_inserts = 100000;
+  size_t granularity = 10000;
+  size_t num_reads = 100000;
   std::vector<int> seeds = {1, 2, 3};
 
   struct Configuration
