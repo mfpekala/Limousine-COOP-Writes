@@ -57,6 +57,7 @@ CMakeFiles/Playground.dir/old_runner.cpp.o
  /playground/src/old_runner.cpp
 CMakeFiles/Playground.dir/runner.cpp.o
  ../experiments/experiments.h
+ ../include/buffered/fast_index.hpp
  ../include/buffered/pgm_index_buffered.hpp
  ../include/debug/metrics.hpp
  ../include/debug/progressbar.hpp

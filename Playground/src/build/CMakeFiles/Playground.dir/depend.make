@@ -56,6 +56,7 @@ CMakeFiles/Playground.dir/old_runner.cpp.o: ../include/pgm/piecewise_linear_mode
 CMakeFiles/Playground.dir/old_runner.cpp.o: ../old_runner.cpp
 
 CMakeFiles/Playground.dir/runner.cpp.o: ../experiments/experiments.h
+CMakeFiles/Playground.dir/runner.cpp.o: ../include/buffered/fast_index.hpp
 CMakeFiles/Playground.dir/runner.cpp.o: ../include/buffered/pgm_index_buffered.hpp
 CMakeFiles/Playground.dir/runner.cpp.o: ../include/debug/metrics.hpp
 CMakeFiles/Playground.dir/runner.cpp.o: ../include/debug/progressbar.hpp

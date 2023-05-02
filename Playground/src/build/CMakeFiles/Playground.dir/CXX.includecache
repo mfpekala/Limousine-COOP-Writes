@@ -28,6 +28,28 @@ buffered/pgm_index_buffered.hpp
 debug/progressbar.hpp
 ../experiments/debug/progressbar.hpp
 
+../include/buffered/fast_index.hpp
+pgm/piecewise_linear_model.hpp
+../include/buffered/pgm/piecewise_linear_model.hpp
+algorithm
+-
+cstddef
+-
+cstdint
+-
+iterator
+-
+limits
+-
+stdexcept
+-
+utility
+-
+vector
+-
+chrono
+-
+
 ../include/buffered/pgm_index_buffered.hpp
 pgm/piecewise_linear_model.hpp
 ../include/buffered/pgm/piecewise_linear_model.hpp
@@ -173,8 +195,8 @@ algorithm
 -
 string
 -
-buffered/pgm_index_buffered.hpp
-/playground/src/buffered/pgm_index_buffered.hpp
+buffered/fast_index.hpp
+/playground/src/buffered/fast_index.hpp
 experiments.h
 /playground/src/experiments.h
 
