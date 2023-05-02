@@ -45,9 +45,6 @@ std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>
   {
     size_t ix = std::rand() % data.size();
     auto val = data[ix].first;
-    // TODO: Fix this, it's a problem with the iterators
-    if (val > 2000000000)
-      continue;
     result.push_back(val);
   }
   return result;
@@ -61,7 +58,6 @@ size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm
   {
     sum += model.n;
   }
-  // std::cout << "sum: " << sum << ", count: " << buffered_pgm.segments_count() << std::endl;
   return sum / buffered_pgm.model_tree[0].size();
 }
 
@@ -101,7 +97,6 @@ size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::
   auto start = std::chrono::high_resolution_clock::now();
   for (auto &key : keys)
   {
-    // std::cout << "about to read " << key << std::endl;
     buffered_pgm.find(key);
   }
   auto end = std::chrono::high_resolution_clock::now();
@@ -130,13 +125,11 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
       new_op.key = std::rand();
       new_op.val = std::rand();
       result.ops.push_back(new_op);
-      // valid_reads.push_back(std::pair<uint32_t, u_int32_t>(new_op.key, new_op.val));
     }
     else
     {
       Op new_op;
       new_op.type = READ;
-      // new_op.key = valid_reads[std::rand() % valid_reads.size()].first;
       new_op.key = result.initial_data[std::rand() % result.initial_data.size()].first;
       new_op.val = 0; // Arbitrary
       result.ops.push_back(new_op);
@@ -162,11 +155,11 @@ std::pair<size_t, size_t> benchmark_workload_config(Workload &workload, Configur
   {
     if (op.type == WRITE)
     {
-      pgm.find(op.key);
+      pgm.insert(op.key, op.val);
     }
     else
     {
-      pgm.insert(op.key, op.val);
+      pgm.find(op.key);
     }
   }
   auto end = std::chrono::high_resolution_clock::now();

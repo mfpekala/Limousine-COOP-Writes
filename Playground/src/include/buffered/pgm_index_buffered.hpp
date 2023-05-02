@@ -359,15 +359,13 @@ namespace pgm
         // A helper function to handle an in-place insert into the tree
         void handle_inplace_inserts(size_t mx, size_t level, EntryVector &entries)
         {
-            // It's assumed this mx, level pair satisfies the can_absorb above
-            // Need to handle leaf and internal separately
-            /*if (level == 0)
+            if (level == 0)
             {
-              // Leaf model
-              EntryVector &data = model_tree[0][mx];
-              auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
-              data.insert(insert_iter, entries);
-            }*/
+                // Leaf model
+                EntryVector &data = leaf_data[mx];
+                auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
+                data.insert(insert_iter, entries.begin(), entries.end());
+            }
         }
 
         void insert(K key, V value)
@@ -553,7 +551,7 @@ namespace pgm
                 new_models_data.push_back(model);
                 next_node.clear();
             };
-            internal::make_segmentation_par(total_els, eps, in_fun, out_fun);
+            internal::make_segmentation_par(total_els, reduced_eps, in_fun, out_fun);
 
             // Now we erase the old buffer and data? (idk if we should do data, didn't before) and replace
             leaf_data.erase(leaf_data.begin() + low_mx, leaf_data.begin() + high_mx);
@@ -596,7 +594,7 @@ namespace pgm
                 new_models.push_back(model);
             };
 
-            internal::make_segmentation_par(total_els, eps_rec, in_fun, out_fun);
+            internal::make_segmentation_par(total_els, reduced_eps_rec, in_fun, out_fun);
 
             model_tree[level].erase(model_tree[level].begin() + low_mx, model_tree[level].begin() + high_mx);
             model_tree[level].insert(model_tree[level].begin() + low_mx, new_models.begin(), new_models.end());
@@ -637,7 +635,7 @@ namespace pgm
                     new_models.push_back(model);
                 };
 
-                internal::make_segmentation_par(total_els, eps_rec, in_fun, out_fun);
+                internal::make_segmentation_par(total_els, reduced_eps_rec, in_fun, out_fun);
 
                 model_tree.push_back(new_models);
             }
@@ -653,8 +651,6 @@ namespace pgm
             {
                 result += level.size() * sizeof(Model);
             }
-            std::cout << "size from levels " << result << std::endl;
-            print_tree(1);
 
             for (auto &buf : buffer_data)
             {

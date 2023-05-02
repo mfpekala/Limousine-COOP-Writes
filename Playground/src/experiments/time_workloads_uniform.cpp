@@ -29,13 +29,13 @@
 namespace
 {
   // Input
-  size_t eps = 128;
-  size_t eps_rec = 16;
-  size_t initial_n = 1e7;
-  size_t num_ops = 1e7;
+  size_t eps = 64;
+  size_t eps_rec = 8;
+  size_t initial_n = 5e5;
+  size_t num_ops = 5e5;
   std::vector<int> seeds = {1, 2, 3};
-  size_t num_trials = 1;
-  std::vector<float> write_props = {0.0, 0.1, 0.2, 0.3};
+  size_t num_trials = 2;
+  std::vector<float> write_props = {0.0, 0.1, 0.2, 0.3, 0.4};
 
   std::vector<Configuration>
   get_configs()
@@ -54,30 +54,78 @@ namespace
     base_outplace.buffer_size = 128;
     base_outplace.fill_ratio = 1.0;
     base_outplace.fill_ratio_rec = 1.0;
+    base_outplace.split_neighborhood = 2;
 
     /* TESTED INPLACE CONFIGS */
     Configuration inplace_n0 = base_inplace;
     inplace_n0.name = "inplace_n0";
     inplace_n0.split_neighborhood = 0;
 
+    Configuration inplace_n1 = base_inplace;
+    inplace_n1.name = "inplace_n1";
+    inplace_n1.split_neighborhood = 1;
+
     Configuration inplace_n4 = base_inplace;
     inplace_n4.name = "inplace_n4";
     inplace_n4.split_neighborhood = 4;
+
+    Configuration inplace_n8 = base_inplace;
+    inplace_n8.name = "inplace_n8";
+    inplace_n8.split_neighborhood = 8;
 
     /* TESTED OUTPLACE CONFIGS */
     Configuration outplace_n0 = base_outplace;
     outplace_n0.name = "outplace_n0";
     outplace_n0.split_neighborhood = 0;
 
+    Configuration outplace_n1 = base_outplace;
+    outplace_n1.name = "outplace_n1";
+    outplace_n1.split_neighborhood = 1;
+
+    Configuration outplace_n2 = base_outplace;
+    outplace_n2.name = "outplace_n2";
+    outplace_n2.split_neighborhood = 2;
+
     Configuration outplace_n4 = base_outplace;
     outplace_n4.name = "outplace_n4";
     outplace_n4.split_neighborhood = 4;
 
+    Configuration outplace_n8 = base_outplace;
+    outplace_n8.name = "outplace_n8";
+    outplace_n8.split_neighborhood = 8;
+
+    Configuration outplace_b8 = base_outplace;
+    outplace_b8.name = "outplace_b8";
+    outplace_b8.buffer_size = 8;
+
+    Configuration outplace_b16 = base_outplace;
+    outplace_b16.name = "outplace_b16";
+    outplace_b16.buffer_size = 16;
+
+    Configuration outplace_b32 = base_outplace;
+    outplace_b32.name = "outplace_b32";
+    outplace_b32.buffer_size = 32;
+
+    Configuration outplace_b64 = base_outplace;
+    outplace_b64.name = "outplace_b64";
+    outplace_b64.buffer_size = 64;
+
+    Configuration outplace_b128 = base_outplace;
+    outplace_b128.name = "outplace_b128";
+    outplace_b128.buffer_size = 128;
+
+    Configuration outplace_b256 = base_outplace;
+    outplace_b256.name = "outplace_b256";
+    outplace_b256.buffer_size = 256;
+
     return {
-        inplace_n0,
-        inplace_n4,
-        outplace_n0,
-        outplace_n4};
+        outplace_b8,
+        outplace_b16,
+        outplace_b32,
+        outplace_b64,
+        outplace_b128,
+        outplace_b256,
+    };
   }
 }
 
