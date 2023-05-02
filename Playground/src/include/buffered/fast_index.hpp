@@ -453,6 +453,8 @@ namespace pgm
         total_els += model_tree[0][mx].n + buffer_data[mx].size();
       }
 
+      std::cout << "split sum: " << low_mx << ", " << high_mx << ", " << total_els << std::endl;
+
       LeafPos proper_pos = LeafPos(mx, 0);
       LeafPos buff_pos = LeafPos(mx, 0);
 
@@ -463,18 +465,31 @@ namespace pgm
 
       auto in_fun = [&](size_t i)
       {
-        while (leaf_data[proper_pos.first].size() <= proper_pos.second && proper_pos.first < high_mx)
+        bool exhausted_proper = high_mx <= proper_pos.first;
+        bool exhausted_buffer = high_mx <= buff_pos.first;
+        if (mx > 10)
+        {
+          std::cout << "total els " << total_els << ", " << i << std::endl;
+          std::cout << "leaf: " << leaf_data[proper_pos.first].size() << ", " << proper_pos.second << std::endl;
+          std::cout << "buf: " << buffer_data[buff_pos.first].size() << ", " << buff_pos.second << std::endl;
+          std::cout << exhausted_proper << ", " << exhausted_buffer << std::endl;
+        }
+        while (!exhausted_proper && leaf_data[proper_pos.first].size() <= proper_pos.second && proper_pos.first < high_mx)
         {
           proper_pos.first++;
           proper_pos.second = 0;
         }
-        while (buffer_data[buff_pos.first].size() <= buff_pos.second && buff_pos.first < high_mx)
+        while (!exhausted_buffer && buffer_data[buff_pos.first].size() <= buff_pos.second && buff_pos.first < high_mx)
         {
           buff_pos.first++;
           buff_pos.second = 0;
         }
-        bool exhausted_proper = high_mx <= proper_pos.first;
-        bool exhausted_buffer = high_mx <= buff_pos.first;
+        exhausted_proper = high_mx <= proper_pos.first;
+        exhausted_buffer = high_mx <= buff_pos.first;
+        if (mx > 10)
+        {
+          std::cout << "after " << exhausted_proper << ", " << exhausted_buffer << std::endl;
+        }
         Entry next_e;
         if (exhausted_proper)
         {
@@ -488,7 +503,8 @@ namespace pgm
         {
           Entry proper_e = leaf_data[proper_pos.first][proper_pos.second];
           Entry buff_e = buffer_data[buff_pos.first][buff_pos.second];
-          next_e = proper_e.first < buff_e.first
+          bool use_proper = leaf_data[proper_pos.first][proper_pos.second].first < buffer_data[buff_pos.first][buff_pos.second].first;
+          next_e = use_proper
                        ? leaf_data[proper_pos.first][proper_pos.second++]
                        : buffer_data[buff_pos.first][buff_pos.second++];
         }
