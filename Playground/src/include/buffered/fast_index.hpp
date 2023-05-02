@@ -309,21 +309,11 @@ namespace pgm
       size_t data_ix = model_tree[0][model_ix].predict_pos(key);
       size_t WINDOW = eps + 3;
       auto [start_model_ix, start_data_ix] = go_back_by(WINDOW, model_ix, data_ix);
-      auto [end_model_ix, end_data_ix] = go_forward_by(WINDOW, model_ix, data_ix);
 
       size_t check_model_ix = start_model_ix;
       size_t check_data_ix = start_data_ix;
-      while (check_model_ix <= end_model_ix)
+      while (check_model_ix < model_tree[0].size())
       {
-        if (check_model_ix == end_model_ix && end_data_ix < check_data_ix)
-        {
-          // We've gone past the end
-          if (end_model_ix < model_tree[0].size() - 1)
-          {
-            return LeafPos(end_model_ix + 1, 0);
-          }
-          return LeafPos(end_model_ix, end_data_ix);
-        }
         EntryVector &data = leaf_data[check_model_ix];
         if (data.size() <= check_data_ix)
         {
@@ -337,19 +327,11 @@ namespace pgm
         }
         if (key < data[check_data_ix].first)
         {
-          /*
-          TODO: Don't know if it's correct to have this
-          if (check_data_ix == 0 && check_model_ix > start_model_ix)
-          {
-            // Go back by one so that we don't break the first key condition
-            return LeafPos(check_model_ix - 1, leaf_data[check_model_ix - 1].size() - 1);
-          }
-          */
           return LeafPos(check_model_ix, check_data_ix);
         }
         check_data_ix++;
       }
-      return LeafPos(end_model_ix, end_data_ix);
+      return LeafPos(model_tree[0].size() - 1, leaf_data[model_tree[0].size() - 1].size() - 1);
     }
 
     // Finds the value corresponding to a key
@@ -465,13 +447,12 @@ namespace pgm
         K cur_key = model_tree[0][ix].first_key;
         if (last_key >= cur_key)
         {
-          std::cout << "huge problem" << std::endl;
-          throw std::invalid_argument("Must be an internal segment to have children");
+          throw std::invalid_argument("Leaves bad (trad case)");
         }
         // Now check if last el of previous buffer is bigger
         if (buffer_data[ix - 1].size() > 0 && buffer_data[ix - 1].back().first >= cur_key)
         {
-          std::cout << "problem found" << std::endl;
+          throw std::invalid_argument("Leaves bad (buffer edge case)");
         }
         last_key = cur_key;
         ix++;
@@ -482,9 +463,24 @@ namespace pgm
       {
         if (!std::is_sorted(buffer_data[bx].begin(), buffer_data[bx].end()))
         {
-          std::cout << "BUF NOT SORTED" << std::endl;
+          throw std::invalid_argument("Leaves bad (buffer unsorted)");
         }
         ++bx;
+      }
+    }
+
+    void verify_internal_level(size_t level)
+    {
+      K last_key = model_tree[level][0].first_key;
+      size_t ix = 1;
+      while (ix < model_tree[level].size())
+      {
+        K cur_key = model_tree[level][ix].first_key;
+        if (last_key >= cur_key)
+        {
+          throw std::invalid_argument("Internal bad");
+        }
+        ++ix;
       }
     }
 
@@ -568,18 +564,9 @@ namespace pgm
 
       size_t parent_ix = get_ix_into_level(new_models_data[0].first_key, 1);
       int change_in_size = new_models_data.size() - (high_mx - low_mx);
-      verify_leaves();
+      model_tree[1][parent_ix].n += change_in_size;
       if (change_in_size > 0)
-        internal_insert(parent_ix, 1, change_in_size);
-    }
-
-    inline void internal_insert(size_t mx, size_t level, size_t num_inserts)
-    {
-      if (can_absorb_inplace_inserts(mx, level, num_inserts))
-      {
-        model_tree[level][mx].n += num_inserts;
-      }
-      internal_split(mx, level);
+        internal_split(parent_ix, 1);
     }
 
     void internal_split(size_t split_mx, size_t level)
@@ -614,23 +601,45 @@ namespace pgm
       model_tree[level].insert(model_tree[level].begin() + low_mx, new_models.begin(), new_models.end());
 
       int change_in_size = new_models.size() - (high_mx - low_mx);
-      if (change_in_size > 0)
+      if (model_tree.size() - 1 <= level)
       {
-        if (model_tree.size() - 1 <= level)
-        {
-          make_new_root();
-        }
-        else
-        {
-          size_t parent_ix = get_ix_into_level(new_models[0].first_key, level + 1);
-          internal_insert(parent_ix, level + 1, change_in_size);
-        }
+        make_new_root();
+      }
+      else
+      {
+        size_t parent_ix = get_ix_into_level(new_models[0].first_key, level + 1);
+        model_tree[level + 1][parent_ix].n += change_in_size;
+        if (change_in_size > 0)
+          internal_split(parent_ix, level + 1);
       }
     }
 
     void make_new_root()
     {
-      return;
+      while (model_tree.back().size() > 1)
+      {
+        size_t total_els = model_tree.back().size();
+        ModelLevel new_models;
+        size_t cur_model_size = 0;
+
+        auto in_fun = [&](size_t i)
+        {
+          return std::pair<K, size_t>(model_tree.back()[i].first_key, cur_model_size++);
+        };
+
+        auto out_fun = [&](auto can_seg)
+        {
+          if (cur_model_size <= 0)
+            return;
+          Model model = Model(this, cur_model_size, can_seg);
+          cur_model_size = 0;
+          new_models.push_back(model);
+        };
+
+        internal::make_segmentation_par(total_els, eps_rec, in_fun, out_fun);
+
+        model_tree.push_back(new_models);
+      }
     }
 
     void print_tree(size_t smallest_level)

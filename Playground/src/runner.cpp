@@ -9,15 +9,16 @@
 
 void simple_fast()
 {
-    auto data = get_random_data(10000, 6);
-    auto pgm = pgm::FastPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), 32, 4);
-    pgm.print_tree(0);
+    auto data = get_random_data(1000000, 6);
+    auto pgm = pgm::FastPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), 64, 8);
 
-    auto inserts = get_random_inserts(100000, 100000)[0];
+    pgm.print_tree(1);
+    auto inserts = get_random_inserts(1000000, 1000000)[0];
     for (auto &i : inserts)
     {
         pgm.insert(i.first, i.second);
     }
+    pgm.print_tree(1);
 
     size_t num_errors = 0;
     auto looking = 2125817040;
