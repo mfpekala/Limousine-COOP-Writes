@@ -101,9 +101,7 @@ namespace pgm::internal
         {
             if (points_in_hull > 0 && x <= last_x)
             {
-                // TODO: Shouldn't be like this
-                // throw std::logic_error("Points must be increasing by x.");
-                return true;
+                throw std::logic_error("Points must be increasing by x.");
             }
 
             last_x = x;
@@ -341,7 +339,7 @@ namespace pgm::internal
         auto c = 0ull;
 
         // Force not parallel for now
-        bool FORCE_NOT_PARALLEL = true;
+        bool FORCE_NOT_PARALLEL = false;
         if (parallelism == 1 || n < 1ull << 15 || FORCE_NOT_PARALLEL)
             return make_segmentation(n, epsilon, in, out);
 

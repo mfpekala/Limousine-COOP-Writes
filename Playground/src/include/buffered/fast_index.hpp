@@ -93,6 +93,7 @@ namespace pgm
     }
 
     // The function that does the actual building
+    // TODO: Investigate the BIG small BIG pattern
     template <typename RandomIt>
     void build(RandomIt first, RandomIt last, size_t eps, size_t rec_eps)
     {
@@ -306,7 +307,7 @@ namespace pgm
       // Get the bounds
       size_t model_ix = get_ix_into_level(key, 0);
       size_t data_ix = model_tree[0][model_ix].predict_pos(key);
-      size_t WINDOW = eps + 2;
+      size_t WINDOW = eps + 3;
       auto [start_model_ix, start_data_ix] = go_back_by(WINDOW, model_ix, data_ix);
       auto [end_model_ix, end_data_ix] = go_forward_by(WINDOW, model_ix, data_ix);
 
@@ -332,8 +333,15 @@ namespace pgm
         }
         if (key < data[check_data_ix].first)
         {
-          return LeafPos(end_model_ix, end_data_ix);
-          ;
+          /*
+          TODO: Don't know if it's correct to have this
+          if (check_data_ix == 0 && check_model_ix > start_model_ix)
+          {
+            // Go back by one so that we don't break the first key condition
+            return LeafPos(check_model_ix - 1, leaf_data[check_model_ix - 1].size() - 1);
+          }
+          */
+          return LeafPos(check_model_ix, check_data_ix);
         }
         check_data_ix++;
       }
@@ -354,10 +362,10 @@ namespace pgm
       return leaf_data[p.first][p.second].second;
     }
 
-    inline bool can_absorb_inplace_inserts(size_t mx, size_t level, EntryVector &entries)
+    inline bool can_absorb_inplace_inserts(size_t mx, size_t level, size_t num_inserts)
     {
       Model &model = model_tree[level][mx];
-      return reduced_eps + model.num_inplaces + entries.size() < eps;
+      return reduced_eps + model.num_inplaces + num_inserts < eps;
     }
 
     // A helper function to handle an in-place insert into the tree
@@ -395,7 +403,7 @@ namespace pgm
 
       // Now we can be sure that the entry doesn't already exist in the index
       EntryVector e = {std::pair<K, V>(key, value)};
-      if (can_absorb_inplace_inserts(exist_pos.first, 0, e))
+      if (can_absorb_inplace_inserts(exist_pos.first, 0, e.size()))
       {
         // Can handle as an in place insert
         handle_inplace_inserts(exist_pos.first, 0, e);
@@ -444,6 +452,33 @@ namespace pgm
       return std::pair<size_t, size_t>(low_mx, high_mx);
     }
 
+    void verify_leaves()
+    {
+      K last_key = model_tree[0][0].first_key;
+      size_t ix = 1;
+      while (ix < model_tree[0].size())
+      {
+        K cur_key = model_tree[0][ix].first_key;
+        if (last_key >= cur_key)
+        {
+          std::cout << "huge problem" << std::endl;
+          throw std::invalid_argument("Must be an internal segment to have children");
+        }
+        last_key = cur_key;
+        ix++;
+      }
+      // Now check if the buffers are sorted
+      size_t bx = 0;
+      while (bx < buffer_data.size())
+      {
+        if (!std::is_sorted(buffer_data[bx].begin(), buffer_data[bx].end()))
+        {
+          std::cout << "BUF NOT SORTED" << std::endl;
+        }
+        ++bx;
+      }
+    }
+
     void leaf_split(size_t mx)
     {
       auto [low_mx, high_mx] = get_split_window(mx, 0);
@@ -453,10 +488,8 @@ namespace pgm
         total_els += model_tree[0][mx].n + buffer_data[mx].size();
       }
 
-      std::cout << "split sum: " << low_mx << ", " << high_mx << ", " << total_els << std::endl;
-
-      LeafPos proper_pos = LeafPos(mx, 0);
-      LeafPos buff_pos = LeafPos(mx, 0);
+      LeafPos proper_pos = LeafPos(low_mx, 0);
+      LeafPos buff_pos = LeafPos(low_mx, 0);
 
       EntryVector next_node;
       DataLevel new_nodes_data;
@@ -465,31 +498,20 @@ namespace pgm
 
       auto in_fun = [&](size_t i)
       {
-        bool exhausted_proper = high_mx <= proper_pos.first;
-        bool exhausted_buffer = high_mx <= buff_pos.first;
-        if (mx > 10)
-        {
-          std::cout << "total els " << total_els << ", " << i << std::endl;
-          std::cout << "leaf: " << leaf_data[proper_pos.first].size() << ", " << proper_pos.second << std::endl;
-          std::cout << "buf: " << buffer_data[buff_pos.first].size() << ", " << buff_pos.second << std::endl;
-          std::cout << exhausted_proper << ", " << exhausted_buffer << std::endl;
-        }
-        while (!exhausted_proper && leaf_data[proper_pos.first].size() <= proper_pos.second && proper_pos.first < high_mx)
+        // Ensure that the positions are at a reasonable place
+        while (leaf_data[proper_pos.first].size() <= proper_pos.second)
         {
           proper_pos.first++;
           proper_pos.second = 0;
         }
-        while (!exhausted_buffer && buffer_data[buff_pos.first].size() <= buff_pos.second && buff_pos.first < high_mx)
+        while (buffer_data[buff_pos.first].size() <= buff_pos.second)
         {
           buff_pos.first++;
           buff_pos.second = 0;
         }
-        exhausted_proper = high_mx <= proper_pos.first;
-        exhausted_buffer = high_mx <= buff_pos.first;
-        if (mx > 10)
-        {
-          std::cout << "after " << exhausted_proper << ", " << exhausted_buffer << std::endl;
-        }
+        // Get the next entry
+        bool exhausted_proper = high_mx <= proper_pos.first;
+        bool exhausted_buffer = high_mx <= buff_pos.first;
         Entry next_e;
         if (exhausted_proper)
         {
@@ -526,6 +548,80 @@ namespace pgm
       };
 
       internal::make_segmentation_par(total_els, eps, in_fun, out_fun);
+
+      // Now we erase the old buffer and data? (idk if we should do data, didn't before) and replace
+      leaf_data.erase(leaf_data.begin() + low_mx, leaf_data.begin() + high_mx);
+      leaf_data.insert(leaf_data.begin() + low_mx, new_nodes_data.begin(), new_nodes_data.end());
+      buffer_data.erase(buffer_data.begin() + low_mx, buffer_data.begin() + high_mx);
+      buffer_data.insert(buffer_data.begin() + low_mx, new_buffers_data.begin(), new_buffers_data.end());
+      model_tree[0].erase(model_tree[0].begin() + low_mx, model_tree[0].begin() + high_mx);
+      model_tree[0].insert(model_tree[0].begin() + low_mx, new_models_data.begin(), new_models_data.end());
+
+      size_t parent_ix = get_ix_into_level(new_models_data[0].first_key, 1);
+      int change_in_size = new_models_data.size() - (high_mx - low_mx);
+      verify_leaves();
+      if (change_in_size > 0)
+        internal_insert(parent_ix, 1, change_in_size);
+    }
+
+    inline void internal_insert(size_t mx, size_t level, size_t num_inserts)
+    {
+      if (can_absorb_inplace_inserts(mx, level, num_inserts))
+      {
+        model_tree[level][mx].n += num_inserts;
+      }
+      internal_split(mx, level);
+    }
+
+    void internal_split(size_t split_mx, size_t level)
+    {
+      auto [low_mx, high_mx] = get_split_window(split_mx, level);
+      size_t total_els = 0;
+      for (size_t mx = low_mx; mx < high_mx; ++mx)
+      {
+        total_els += model_tree[level][mx].n;
+      }
+      size_t offset = get_offset_into_level(low_mx, level);
+      ModelLevel new_models;
+      size_t cur_model_size = 0;
+
+      auto in_fun = [&](size_t i)
+      {
+        return std::pair<K, size_t>(model_tree[level - 1][offset + i].first_key, cur_model_size++);
+      };
+
+      auto out_fun = [&](auto can_seg)
+      {
+        if (cur_model_size <= 0)
+          return;
+        Model model = Model(this, cur_model_size, can_seg);
+        cur_model_size = 0;
+        new_models.push_back(model);
+      };
+
+      internal::make_segmentation_par(total_els, eps_rec, in_fun, out_fun);
+
+      model_tree[level].erase(model_tree[level].begin() + low_mx, model_tree[level].begin() + high_mx);
+      model_tree[level].insert(model_tree[level].begin() + low_mx, new_models.begin(), new_models.end());
+
+      int change_in_size = new_models.size() - (high_mx - low_mx);
+      if (change_in_size > 0)
+      {
+        if (model_tree.size() - 1 <= level)
+        {
+          make_new_root();
+        }
+        else
+        {
+          size_t parent_ix = get_ix_into_level(new_models[0].first_key, level + 1);
+          internal_insert(parent_ix, level + 1, change_in_size);
+        }
+      }
+    }
+
+    void make_new_root()
+    {
+      return;
     }
 
     void print_tree(size_t smallest_level)
@@ -537,8 +633,9 @@ namespace pgm
         std::cout << "Level: " << level << ", num_segs: " << model_tree[level].size() << std::endl;
         for (size_t mx = 0; mx < model_tree[level].size(); ++mx)
         {
-          std::cout << "(fk:" << model_tree[level][mx].first_key
-                    << ", n:" << model_tree[level][mx].n
+          std::cout << "(ix: " << mx
+                    << ", fk: " << model_tree[level][mx].first_key
+                    << ", n: " << model_tree[level][mx].n
                     << "), ";
         }
         std::cout << std::endl;

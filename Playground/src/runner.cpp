@@ -9,8 +9,8 @@
 
 void simple_fast()
 {
-    auto data = get_random_data(1000000, 6);
-    auto pgm = pgm::FastPGMIndex<uint32_t, uint32_t>(data.begin(), data.end());
+    auto data = get_random_data(10000, 6);
+    auto pgm = pgm::FastPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), 32, 4);
     pgm.print_tree(0);
 
     auto inserts = get_random_inserts(100000, 100000)[0];
