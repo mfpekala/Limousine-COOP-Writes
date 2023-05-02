@@ -354,33 +354,33 @@ namespace pgm
       return leaf_data[p.first][p.second].second;
     }
 
-    inline void can_absorb_inplace_insert(size_t mx, size_t level, EntryVector &entries)
+    inline bool can_absorb_inplace_inserts(size_t mx, size_t level, EntryVector &entries)
     {
-      Model model = model_tree[level][mx];
+      Model &model = model_tree[level][mx];
       return reduced_eps + model.num_inplaces + entries.size() < eps;
     }
 
     // A helper function to handle an in-place insert into the tree
-    void handle_inplace_insert(size_t mx, size_t level, EntryVector &entries)
+    void handle_inplace_inserts(size_t mx, size_t level, EntryVector &entries)
     {
       // It's assumed this mx, level pair satisfies the can_absorb above
       // Need to handle leaf and internal separately
-      if (level == 0)
+      /*if (level == 0)
       {
         // Leaf model
         EntryVector &data = model_tree[0][mx];
         auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
         data.insert(insert_iter, entries);
-      }
+      }*/
     }
 
     void insert(K key, V value)
     {
       // First make sure the key doesn't already exist in the leaf data
       LeafPos exist_pos = find_pos(key);
-      if (leaf_data[0][exist_pos.first][exist_pos].first == key)
+      if (leaf_data[exist_pos.first][exist_pos.second].first == key)
       {
-        leaf_data[0][exist_pos.first][exist_pos.second].second = value;
+        leaf_data[exist_pos.first][exist_pos.second].second = value;
         return;
       }
       // Then make sure the key doesn't already exist in the buffer
@@ -394,12 +394,122 @@ namespace pgm
       }
 
       // Now we can be sure that the entry doesn't already exist in the index
-      size_t mx = get_ix_into_level(key, 0);
-      EntryVector e = {std::make_pair(key, value)};
-      if (can_absorb_inplace_insert(mx, 0, e))
+      EntryVector e = {std::pair<K, V>(key, value)};
+      if (can_absorb_inplace_inserts(exist_pos.first, 0, e))
       {
-        handle_inplace_insert(mx, 0, e);
+        // Can handle as an in place insert
+        handle_inplace_inserts(exist_pos.first, 0, e);
+        return;
       }
+
+      // Can handle as an out of place insert
+      auto iter = std::lower_bound(
+          buffer_data[exist_pos.first].begin(),
+          buffer_data[exist_pos.first].end(),
+          e[0]);
+      buffer_data[exist_pos.first].insert(iter, e.begin(), e.end());
+
+      if (buffer_data[exist_pos.first].size() > buffer_size)
+      {
+        leaf_split(exist_pos.first);
+      }
+    }
+
+    // Returns the indices (into the level) of the models participating in this merge
+    // Note that the first value is inclusive, and the second is exclusive
+    inline std::pair<size_t, size_t> get_split_window(size_t split_mx, size_t level)
+    {
+      size_t parent_ix = get_ix_into_level(model_tree[level][split_mx].first_key, level + 1);
+      size_t low_mx = split_mx;
+      size_t moved = 0;
+      while (0 < low_mx && moved < split_neighborhood)
+      {
+        size_t prev_parent_ix = get_ix_into_level(model_tree[level][low_mx - 1].first_key, level + 1);
+        if (prev_parent_ix != parent_ix)
+          break;
+        moved++;
+        low_mx--;
+      }
+      size_t high_mx = split_mx + 1;
+      moved = 0;
+      while (high_mx < model_tree[level].size() && moved < split_neighborhood)
+      {
+        size_t next_parent_ix = get_ix_into_level(model_tree[level][high_mx].first_key, level + 1);
+        if (next_parent_ix != parent_ix)
+          break;
+        moved++;
+        high_mx++;
+      }
+
+      return std::pair<size_t, size_t>(low_mx, high_mx);
+    }
+
+    void leaf_split(size_t mx)
+    {
+      auto [low_mx, high_mx] = get_split_window(mx, 0);
+      size_t total_els = 0;
+      for (size_t mx = low_mx; mx < high_mx; ++mx)
+      {
+        total_els += model_tree[0][mx].n + buffer_data[mx].size();
+      }
+
+      LeafPos proper_pos = LeafPos(mx, 0);
+      LeafPos buff_pos = LeafPos(mx, 0);
+
+      EntryVector next_node;
+      DataLevel new_nodes_data;
+      BufferLevel new_buffers_data;
+      ModelLevel new_models_data;
+
+      auto in_fun = [&](size_t i)
+      {
+        while (leaf_data[proper_pos.first].size() <= proper_pos.second && proper_pos.first < high_mx)
+        {
+          proper_pos.first++;
+          proper_pos.second = 0;
+        }
+        while (buffer_data[buff_pos.first].size() <= buff_pos.second && buff_pos.first < high_mx)
+        {
+          buff_pos.first++;
+          buff_pos.second = 0;
+        }
+        bool exhausted_proper = high_mx <= proper_pos.first;
+        bool exhausted_buffer = high_mx <= buff_pos.first;
+        Entry next_e;
+        if (exhausted_proper)
+        {
+          next_e = buffer_data[buff_pos.first][buff_pos.second++];
+        }
+        else if (exhausted_buffer)
+        {
+          next_e = leaf_data[proper_pos.first][proper_pos.second++];
+        }
+        else
+        {
+          Entry proper_e = leaf_data[proper_pos.first][proper_pos.second];
+          Entry buff_e = buffer_data[buff_pos.first][buff_pos.second];
+          next_e = proper_e.first < buff_e.first
+                       ? leaf_data[proper_pos.first][proper_pos.second++]
+                       : buffer_data[buff_pos.first][buff_pos.second++];
+        }
+        next_node.push_back(next_e);
+        return std::pair<K, size_t>(next_e.first, next_node.size());
+      };
+
+      auto out_fun = [&](auto can_seg)
+      {
+        if (next_node.size() <= 0)
+          return;
+        EntryVector buf;
+        buf.reserve(buffer_size);
+        auto model = Model(this, next_node.size(), can_seg);
+        new_nodes_data.push_back(EntryVector(next_node));
+        new_buffers_data.push_back(buf);
+        new_models_data.push_back(model);
+        next_node.clear();
+      };
+
+      internal::make_segmentation_par(total_els, eps, in_fun, out_fun);
     }
 
     void print_tree(size_t smallest_level)

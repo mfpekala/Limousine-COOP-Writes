@@ -13,6 +13,12 @@ void simple_fast()
     auto pgm = pgm::FastPGMIndex<uint32_t, uint32_t>(data.begin(), data.end());
     pgm.print_tree(0);
 
+    auto inserts = get_random_inserts(100000, 100000)[0];
+    for (auto &i : inserts)
+    {
+        pgm.insert(i.first, i.second);
+    }
+
     size_t num_errors = 0;
     auto looking = 2125817040;
     for (auto &entry : data)
