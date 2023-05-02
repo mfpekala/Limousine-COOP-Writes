@@ -47,6 +47,7 @@ namespace pgm
     using BufferLevel = std::vector<EntryVector>;
     using ModelLevel = std::vector<Model>;
     using ModelTree = std::vector<ModelLevel>;
+    using LeafPos = std::pair<size_t, size_t>;
 
     // Tree structure
     ModelTree model_tree;
@@ -54,14 +55,14 @@ namespace pgm
     BufferLevel buffer_data;
 
     // Parameters
-    size_t eps = 128;
+    size_t eps;
     size_t reduced_eps;
-    size_t eps_rec = 16;
+    size_t eps_rec;
     size_t reduced_eps_rec;
-    float fill_ratio = 1.0;
-    float fill_ratio_rec = 1.0;
-    size_t buffer_size = 128;
-    size_t split_neighborhood = 4;
+    float fill_ratio;
+    float fill_ratio_rec;
+    size_t buffer_size;
+    size_t split_neighborhood;
 
     // Helper function to reset these reduced values when passing in something into the constructor
     void reset_reduced_values()
@@ -70,6 +71,28 @@ namespace pgm
       reduced_eps_rec = (size_t)((float)eps_rec * fill_ratio);
     }
 
+    // Constructor to build the index and set params
+    template <typename RandomIt>
+    FastPGMIndex(
+        RandomIt first,
+        RandomIt last,
+        size_t eps = 128,
+        size_t eps_rec = 16,
+        float fill_ratio = 1.0,
+        float fill_ratio_rec = 1.0,
+        size_t buffer_size = 128,
+        size_t split_neighborhood = 4) : eps(eps),
+                                         eps_rec(eps_rec),
+                                         fill_ratio(fill_ratio),
+                                         fill_ratio_rec(fill_ratio_rec),
+                                         buffer_size(buffer_size),
+                                         split_neighborhood(split_neighborhood)
+    {
+      reset_reduced_values();
+      build(first, last, eps, eps_rec);
+    }
+
+    // The function that does the actual building
     template <typename RandomIt>
     void build(RandomIt first, RandomIt last, size_t eps, size_t rec_eps)
     {
@@ -95,7 +118,7 @@ namespace pgm
       DataLevel base_data;
       base_data.reserve(size_guess);
       BufferLevel base_buffers;
-      base_buffers.resert(size_guess);
+      base_buffers.reserve(size_guess);
       ModelLevel base_models;
       base_models.reserve(size_guess);
 
@@ -130,13 +153,16 @@ namespace pgm
         cur_node_size = 0;
       };
 
-      auto build_level = [&](auto in_fun, auto out_fun)
+      auto build_level = [&](size_t n_els, auto in_fun, auto out_fun)
       {
-        auto n_segments = internal::make_segmentation_par(n, eps, in_fun, out_fun);
+        auto n_segments = internal::make_segmentation_par(n_els, eps, in_fun, out_fun);
         return n_segments;
       };
 
-      size_t last_n = build_level(in_fun, out_fun);
+      size_t last_n = build_level(n, in_fun, out_fun);
+      leaf_data = base_data;
+      buffer_data = base_buffers;
+      model_tree.push_back(base_models);
 
       // The above code successfully builds the base level of the model
       // Now it's time to recursively construct the internal levels
@@ -162,7 +188,7 @@ namespace pgm
           cur_model_size = 0;
         };
 
-        last_n = build_level(rec_in_fun, rec_out_fun);
+        last_n = build_level(last_n, rec_in_fun, rec_out_fun);
         model_tree.push_back(next_level);
       }
     }
@@ -186,7 +212,7 @@ namespace pgm
       size_t level = model_tree.size() - 1;
       Model cur_model = model_tree[level][0];
       size_t new_ix = 0;
-      while (level < goal_level)
+      while (goal_level < level)
       {
         // Predict the window to look
         size_t pred_ix = cur_model.predict_pos(key);
@@ -194,7 +220,7 @@ namespace pgm
         pred_ix += offset;
         size_t WINDOW = level > 0 ? eps + 2 : eps_rec + 2;
         size_t lowest_ix = WINDOW < pred_ix ? pred_ix - WINDOW : 0;
-        size_t highest_ix = pred_ix + WINDOW + 1 < model_tree[level].size() ? pred_ix + WINDOW + 1 : model_tree[level].size();
+        size_t highest_ix = pred_ix + WINDOW + 1 < model_tree[level - 1].size() ? pred_ix + WINDOW + 1 : model_tree[level - 1].size();
         // Find the first model where the _next_ model is too high
         new_ix = lowest_ix;
         while (new_ix + 1 < highest_ix && model_tree[level - 1][new_ix + 1].first_key < key)
@@ -217,6 +243,182 @@ namespace pgm
     {
       return model_tree[0].begin() + get_ix_into_level(key, 0);
     }
+
+    // A helper function to get the model_ix, data_ix pair that is k elements before
+    LeafPos go_back_by(size_t k, size_t model_ix, size_t data_ix)
+    {
+      size_t new_model_ix = model_ix;
+      size_t new_data_ix = data_ix;
+      while (0 <= new_model_ix && 0 < k)
+      {
+        if (k <= new_data_ix)
+        {
+          new_data_ix -= k;
+          k = 0;
+        }
+        else
+        {
+          k -= (new_data_ix + 1);
+          if (new_model_ix == 0)
+          {
+            return LeafPos(0, 0);
+          }
+          new_model_ix--;
+          new_data_ix = model_tree[0][new_model_ix].n - 1;
+        }
+      }
+      return LeafPos(new_model_ix, new_data_ix);
+    }
+
+    // A helper function to get the model_ix, data_ix pair that is k elements after
+    LeafPos go_forward_by(size_t k, size_t model_ix, size_t data_ix)
+    {
+      size_t new_model_ix = model_ix;
+      size_t new_data_ix = data_ix;
+      while (new_model_ix < model_tree[0].size() && 0 < k)
+      {
+        if (new_data_ix + k < model_tree[0][new_model_ix].n)
+        {
+          new_data_ix += k;
+          k = 0;
+        }
+        else
+        {
+          size_t diff = model_tree[0][new_model_ix].n - new_data_ix;
+          k -= diff;
+          if (new_model_ix >= model_tree[0].size() - 1)
+          {
+            return LeafPos(model_tree[0].size() - 1, model_tree[0].back().n - 1);
+          }
+          new_model_ix++;
+          new_data_ix = 0;
+        }
+      }
+      return LeafPos(new_model_ix, new_data_ix);
+    }
+
+    // A helper function to return the position of a key
+    // NOTE: Will return the position that this key _should_ occupy
+    // It's up to the caller to double check if that pos has the key or not
+    // This is useful to not repeat work
+    LeafPos find_pos(const K &key)
+    {
+      // Get the bounds
+      size_t model_ix = get_ix_into_level(key, 0);
+      size_t data_ix = model_tree[0][model_ix].predict_pos(key);
+      size_t WINDOW = eps + 2;
+      auto [start_model_ix, start_data_ix] = go_back_by(WINDOW, model_ix, data_ix);
+      auto [end_model_ix, end_data_ix] = go_forward_by(WINDOW, model_ix, data_ix);
+
+      size_t check_model_ix = start_model_ix;
+      size_t check_data_ix = start_data_ix;
+      while (check_model_ix <= end_model_ix)
+      {
+        if (check_model_ix == end_model_ix && end_data_ix < check_data_ix)
+        {
+          // We've gone past the end
+          return LeafPos(end_model_ix, end_data_ix);
+        }
+        EntryVector &data = leaf_data[check_model_ix];
+        if (data.size() <= check_data_ix)
+        {
+          check_model_ix++;
+          check_data_ix = 0;
+          continue;
+        }
+        if (data[check_data_ix].first == key)
+        {
+          return LeafPos(check_model_ix, check_data_ix);
+        }
+        if (key < data[check_data_ix].first)
+        {
+          return LeafPos(end_model_ix, end_data_ix);
+          ;
+        }
+        check_data_ix++;
+      }
+      return LeafPos(end_model_ix, end_data_ix);
+    }
+
+    // Finds the value corresponding to a key
+    // TODO: Implement this in an iterator-like way that supports range queries with
+    // better memory performance
+    V find(const K &key)
+    {
+      // Get the bounds
+      auto p = find_pos(key);
+      if (leaf_data[p.first][p.second].first != key)
+      {
+        return std::numeric_limits<V>::max();
+      }
+      return leaf_data[p.first][p.second].second;
+    }
+
+    inline void can_absorb_inplace_insert(size_t mx, size_t level, EntryVector &entries)
+    {
+      Model model = model_tree[level][mx];
+      return reduced_eps + model.num_inplaces + entries.size() < eps;
+    }
+
+    // A helper function to handle an in-place insert into the tree
+    void handle_inplace_insert(size_t mx, size_t level, EntryVector &entries)
+    {
+      // It's assumed this mx, level pair satisfies the can_absorb above
+      // Need to handle leaf and internal separately
+      if (level == 0)
+      {
+        // Leaf model
+        EntryVector &data = model_tree[0][mx];
+        auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
+        data.insert(insert_iter, entries);
+      }
+    }
+
+    void insert(K key, V value)
+    {
+      // First make sure the key doesn't already exist in the leaf data
+      LeafPos exist_pos = find_pos(key);
+      if (leaf_data[0][exist_pos.first][exist_pos].first == key)
+      {
+        leaf_data[0][exist_pos.first][exist_pos.second].second = value;
+        return;
+      }
+      // Then make sure the key doesn't already exist in the buffer
+      for (size_t ix = 0; ix < buffer_data[exist_pos.first].size(); ++ix)
+      {
+        if (buffer_data[exist_pos.first][ix].first == key)
+        {
+          buffer_data[exist_pos.first][ix].second = value;
+          return;
+        }
+      }
+
+      // Now we can be sure that the entry doesn't already exist in the index
+      size_t mx = get_ix_into_level(key, 0);
+      EntryVector e = {std::make_pair(key, value)};
+      if (can_absorb_inplace_insert(mx, 0, e))
+      {
+        handle_inplace_insert(mx, 0, e);
+      }
+    }
+
+    void print_tree(size_t smallest_level)
+    {
+      std::cout << "Height: " << model_tree.size() << std::endl;
+      int level = model_tree.size() - 1;
+      while (smallest_level <= level && 0 <= level)
+      {
+        std::cout << "Level: " << level << ", num_segs: " << model_tree[level].size() << std::endl;
+        for (size_t mx = 0; mx < model_tree[level].size(); ++mx)
+        {
+          std::cout << "(fk:" << model_tree[level][mx].first_key
+                    << ", n:" << model_tree[level][mx].n
+                    << "), ";
+        }
+        std::cout << std::endl;
+        level--;
+      }
+    }
   };
 
 #pragma push pack 1
@@ -229,7 +431,7 @@ namespace pgm
     K first_key;
     float slope;
     int32_t intercept;
-    size_t num_inplaces;
+    size_t num_inplaces = 0;
 
     // Constructor one: specify a model manually (usually used to make dummy models)
     Model(
