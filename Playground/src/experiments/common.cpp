@@ -117,8 +117,9 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
 
   Workload result;
   result.name = name;
-  auto initial_data = get_random_data(initial_n, seed);
-  auto valid_reads = initial_data;
+  result.initial_data = get_random_data(initial_n, seed);
+  result.ops = std::vector<Op>(num_ops);
+  // auto valid_reads = initial_data;
   for (int ix = 0; ix < num_ops; ++ix)
   {
     bool is_write = dis(gen) < prop_writes;
@@ -129,19 +130,48 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
       new_op.key = std::rand();
       new_op.val = std::rand();
       result.ops.push_back(new_op);
-      valid_reads.push_back(std::pair<uint32_t, u_int32_t>(new_op.key, new_op.val));
+      // valid_reads.push_back(std::pair<uint32_t, u_int32_t>(new_op.key, new_op.val));
     }
     else
     {
       Op new_op;
       new_op.type = READ;
-      new_op.key = valid_reads[std::rand() % valid_reads.size()].first;
+      // new_op.key = valid_reads[std::rand() % valid_reads.size()].first;
+      new_op.key = result.initial_data[std::rand() % result.initial_data.size()].first;
       new_op.val = 0; // Arbitrary
       result.ops.push_back(new_op);
     }
   }
+  return result;
 }
 
-std::pair<size_t, size_t> benchmark_workload_config(Workload workload, Configuration config)
+std::pair<size_t, size_t> benchmark_workload_config(Workload &workload, Configuration &config)
 {
+  auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+      workload.initial_data.begin(),
+      workload.initial_data.end(),
+      config.eps,
+      config.eps_rec,
+      config.fill_ratio,
+      config.fill_ratio_rec,
+      config.buffer_size,
+      config.split_neighborhood);
+
+  auto start = std::chrono::high_resolution_clock::now();
+  for (auto &op : workload.ops)
+  {
+    if (op.type == WRITE)
+    {
+      pgm.find(op.key);
+    }
+    else
+    {
+      pgm.insert(op.key, op.val);
+    }
+  }
+  auto end = std::chrono::high_resolution_clock::now();
+
+  size_t time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  size_t mem = pgm.size_in_bytes();
+  return std::make_pair(time, mem);
 }

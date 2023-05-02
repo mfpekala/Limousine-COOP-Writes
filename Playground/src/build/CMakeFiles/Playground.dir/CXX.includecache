@@ -23,6 +23,8 @@ chrono
 -
 thread
 -
+random
+-
 buffered/pgm_index_buffered.hpp
 ../experiments/buffered/pgm_index_buffered.hpp
 debug/progressbar.hpp
@@ -107,12 +109,14 @@ chrono
 -
 thread
 -
+random
+-
 buffered/pgm_index_buffered.hpp
 /playground/src/experiments/buffered/pgm_index_buffered.hpp
 debug/progressbar.hpp
 /playground/src/experiments/debug/progressbar.hpp
 
-/playground/src/experiments/inserts_vs_rlatency.cpp
+/playground/src/experiments/time_workloads_uniform.cpp
 experiments.h
 /playground/src/experiments/experiments.h
 

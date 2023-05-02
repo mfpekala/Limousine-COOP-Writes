@@ -15,9 +15,11 @@
 struct Configuration
 {
   std::string name;
+  size_t eps;
+  size_t eps_rec;
   float fill_ratio;
-  float fill_ratio_recursive;
-  size_t max_buffer_size;
+  float fill_ratio_rec;
+  size_t buffer_size;
   size_t split_neighborhood;
 };
 
@@ -116,7 +118,7 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
  * @param workload - The workload to run
  * @param config - The configuration to use for this workload
  */
-std::pair<size_t, size_t> benchmark_workload_config(Workload workload, Configuration config);
+std::pair<size_t, size_t> benchmark_workload_config(Workload &workload, Configuration &config);
 
 /* EXPERIMENTS */
 
@@ -129,3 +131,5 @@ void run_inserts_vs_rlatency(std::string filename);
 void run_insert_metrics(std::string filename);
 
 void read_inserted(std::string filename);
+
+void run_time_workloads_uniform(std::string filename);

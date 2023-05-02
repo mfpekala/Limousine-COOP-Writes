@@ -41,6 +41,6 @@ void simple_fast()
 
 int main(int argc, char **argv)
 {
-    run_inserts_vs_rlatency("fast_rlatency.csv");
+    run_time_workloads_uniform("workloads_uniform.csv");
     return 0;
 }

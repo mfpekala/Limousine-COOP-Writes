@@ -11,8 +11,8 @@
 },
 {
   "directory": "/playground/src/build",
-  "command": "/usr/bin/c++   -I/playground/src -I/playground/src/include -I/playground/src/experiments   -O3 -g   -std=gnu++1z -o CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.o -c /playground/src/experiments/inserts_vs_rlatency.cpp",
-  "file": "/playground/src/experiments/inserts_vs_rlatency.cpp"
+  "command": "/usr/bin/c++   -I/playground/src -I/playground/src/include -I/playground/src/experiments   -O3 -g   -std=gnu++1z -o CMakeFiles/Playground.dir/experiments/time_workloads_uniform.cpp.o -c /playground/src/experiments/time_workloads_uniform.cpp",
+  "file": "/playground/src/experiments/time_workloads_uniform.cpp"
 },
 {
   "directory": "/playground/src/build",

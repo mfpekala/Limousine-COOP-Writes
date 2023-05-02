@@ -177,32 +177,32 @@ experiments/common.cpp.s:
 	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/common.cpp.s
 .PHONY : experiments/common.cpp.s
 
-experiments/inserts_vs_rlatency.o: experiments/inserts_vs_rlatency.cpp.o
+experiments/time_workloads_uniform.o: experiments/time_workloads_uniform.cpp.o
 
-.PHONY : experiments/inserts_vs_rlatency.o
+.PHONY : experiments/time_workloads_uniform.o
 
 # target to build an object file
-experiments/inserts_vs_rlatency.cpp.o:
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.o
-.PHONY : experiments/inserts_vs_rlatency.cpp.o
+experiments/time_workloads_uniform.cpp.o:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/time_workloads_uniform.cpp.o
+.PHONY : experiments/time_workloads_uniform.cpp.o
 
-experiments/inserts_vs_rlatency.i: experiments/inserts_vs_rlatency.cpp.i
+experiments/time_workloads_uniform.i: experiments/time_workloads_uniform.cpp.i
 
-.PHONY : experiments/inserts_vs_rlatency.i
+.PHONY : experiments/time_workloads_uniform.i
 
 # target to preprocess a source file
-experiments/inserts_vs_rlatency.cpp.i:
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.i
-.PHONY : experiments/inserts_vs_rlatency.cpp.i
+experiments/time_workloads_uniform.cpp.i:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/time_workloads_uniform.cpp.i
+.PHONY : experiments/time_workloads_uniform.cpp.i
 
-experiments/inserts_vs_rlatency.s: experiments/inserts_vs_rlatency.cpp.s
+experiments/time_workloads_uniform.s: experiments/time_workloads_uniform.cpp.s
 
-.PHONY : experiments/inserts_vs_rlatency.s
+.PHONY : experiments/time_workloads_uniform.s
 
 # target to generate assembly for a file
-experiments/inserts_vs_rlatency.cpp.s:
-	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/inserts_vs_rlatency.cpp.s
-.PHONY : experiments/inserts_vs_rlatency.cpp.s
+experiments/time_workloads_uniform.cpp.s:
+	$(MAKE) -f CMakeFiles/Playground.dir/build.make CMakeFiles/Playground.dir/experiments/time_workloads_uniform.cpp.s
+.PHONY : experiments/time_workloads_uniform.cpp.s
 
 runner.o: runner.cpp.o
 
@@ -246,9 +246,9 @@ help:
 	@echo "... experiments/common.o"
 	@echo "... experiments/common.i"
 	@echo "... experiments/common.s"
-	@echo "... experiments/inserts_vs_rlatency.o"
-	@echo "... experiments/inserts_vs_rlatency.i"
-	@echo "... experiments/inserts_vs_rlatency.s"
+	@echo "... experiments/time_workloads_uniform.o"
+	@echo "... experiments/time_workloads_uniform.i"
+	@echo "... experiments/time_workloads_uniform.s"
 	@echo "... runner.o"
 	@echo "... runner.i"
 	@echo "... runner.s"

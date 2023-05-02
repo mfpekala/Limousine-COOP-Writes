@@ -312,7 +312,8 @@ namespace pgm
 
             size_t check_model_ix = start_model_ix;
             size_t check_data_ix = start_data_ix;
-            while (check_model_ix < model_tree[0].size())
+            size_t num_explored = 0;
+            while (check_model_ix < model_tree[0].size() && num_explored < WINDOW * 2)
             {
                 EntryVector &data = leaf_data[check_model_ix];
                 if (data.size() <= check_data_ix)
@@ -330,6 +331,7 @@ namespace pgm
                     return LeafPos(check_model_ix, check_data_ix);
                 }
                 check_data_ix++;
+                num_explored++;
             }
             return LeafPos(model_tree[0].size() - 1, leaf_data[model_tree[0].size() - 1].size() - 1);
         }
@@ -639,6 +641,27 @@ namespace pgm
 
                 model_tree.push_back(new_models);
             }
+        }
+
+        // Returns the size of the index
+        // NOTE: Does not include size of the data, just size of the models + buffers
+        size_t size_in_bytes()
+        {
+            size_t result = 0;
+
+            for (auto &level : model_tree)
+            {
+                result += level.size() * sizeof(Model);
+            }
+            std::cout << "size from levels " << result << std::endl;
+            print_tree(1);
+
+            for (auto &buf : buffer_data)
+            {
+                result += buf.capacity() * sizeof(Entry);
+            }
+
+            return result;
         }
 
         void print_tree(size_t smallest_level)
