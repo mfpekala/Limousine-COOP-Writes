@@ -318,6 +318,10 @@ namespace pgm
         if (check_model_ix == end_model_ix && end_data_ix < check_data_ix)
         {
           // We've gone past the end
+          if (end_model_ix < model_tree[0].size() - 1)
+          {
+            return LeafPos(end_model_ix + 1, 0);
+          }
           return LeafPos(end_model_ix, end_data_ix);
         }
         EntryVector &data = leaf_data[check_model_ix];
@@ -464,6 +468,11 @@ namespace pgm
           std::cout << "huge problem" << std::endl;
           throw std::invalid_argument("Must be an internal segment to have children");
         }
+        // Now check if last el of previous buffer is bigger
+        if (buffer_data[ix - 1].size() > 0 && buffer_data[ix - 1].back().first >= cur_key)
+        {
+          std::cout << "problem found" << std::endl;
+        }
         last_key = cur_key;
         ix++;
       }
@@ -496,42 +505,42 @@ namespace pgm
       BufferLevel new_buffers_data;
       ModelLevel new_models_data;
 
+      size_t feed_ix = low_mx;
+      size_t proper_ix = 0;
+      size_t buffer_ix = 0;
+
       auto in_fun = [&](size_t i)
       {
-        // Ensure that the positions are at a reasonable place
-        while (leaf_data[proper_pos.first].size() <= proper_pos.second)
+        bool proper_exhausted = leaf_data[feed_ix].size() <= proper_ix;
+        bool buffer_exhaused = buffer_data[feed_ix].size() <= buffer_ix;
+        if (proper_exhausted && buffer_exhaused)
         {
-          proper_pos.first++;
-          proper_pos.second = 0;
+          // Move on to next model
+          feed_ix++;
+          proper_ix = 0;
+          buffer_ix = 0;
+          proper_exhausted = leaf_data[feed_ix].size() <= proper_ix;
+          buffer_exhaused = buffer_data[feed_ix].size() <= buffer_ix;
         }
-        while (buffer_data[buff_pos.first].size() <= buff_pos.second)
-        {
-          buff_pos.first++;
-          buff_pos.second = 0;
-        }
-        // Get the next entry
-        bool exhausted_proper = high_mx <= proper_pos.first;
-        bool exhausted_buffer = high_mx <= buff_pos.first;
         Entry next_e;
-        if (exhausted_proper)
+        if (proper_exhausted)
         {
-          next_e = buffer_data[buff_pos.first][buff_pos.second++];
+          next_e = buffer_data[feed_ix][buffer_ix++];
         }
-        else if (exhausted_buffer)
+        else if (buffer_exhaused)
         {
-          next_e = leaf_data[proper_pos.first][proper_pos.second++];
+          next_e = leaf_data[feed_ix][proper_ix++];
         }
         else
         {
-          Entry proper_e = leaf_data[proper_pos.first][proper_pos.second];
-          Entry buff_e = buffer_data[buff_pos.first][buff_pos.second];
-          bool use_proper = leaf_data[proper_pos.first][proper_pos.second].first < buffer_data[buff_pos.first][buff_pos.second].first;
-          next_e = use_proper
-                       ? leaf_data[proper_pos.first][proper_pos.second++]
-                       : buffer_data[buff_pos.first][buff_pos.second++];
+          K proper_key = leaf_data[feed_ix][proper_ix].first;
+          K buffer_key = buffer_data[feed_ix][buffer_ix].first;
+          next_e = proper_key < buffer_key
+                       ? leaf_data[feed_ix][proper_ix++]
+                       : buffer_data[feed_ix][buffer_ix++];
         }
         next_node.push_back(next_e);
-        return std::pair<K, size_t>(next_e.first, next_node.size());
+        return std::pair<K, size_t>(next_e.first, next_node.size() - 1);
       };
 
       auto out_fun = [&](auto can_seg)
