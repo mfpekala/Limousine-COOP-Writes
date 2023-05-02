@@ -1,1 +1,0 @@
-/usr/bin/c++   -Wall -Wbuiltin-macro-redefined -pedantic -Werror   CMakeFiles/runner.dir/runner.cpp.o  -o runner 

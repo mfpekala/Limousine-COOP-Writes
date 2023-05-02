@@ -1,2 +1,0 @@
-/usr/bin/ar qc libbuffered.a  CMakeFiles/buffered.dir/buffered/index.cpp.o
-/usr/bin/ranlib libbuffered.a
