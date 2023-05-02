@@ -57,20 +57,20 @@ std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>
 size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm)
 {
   size_t sum = 0;
-  for (auto &seg : buffered_pgm.levels[0])
+  for (auto &model : buffered_pgm.model_tree[0])
   {
-    sum += seg.data.size();
+    sum += model.n;
   }
   // std::cout << "sum: " << sum << ", count: " << buffered_pgm.segments_count() << std::endl;
-  return sum / buffered_pgm.segments_count();
+  return sum / buffered_pgm.model_tree[0].size();
 }
 
 std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins, size_t hist_max)
 {
   std::vector<size_t> key_vals(n_bins + 1, 0);
-  for (auto &seg : buffered_pgm.levels[0])
+  for (auto &model : buffered_pgm.model_tree[0])
   {
-    size_t bin = (((double)seg.data.size() * n_bins) / (double)hist_max);
+    size_t bin = (((double)model.n * n_bins) / (double)hist_max);
     if (bin > n_bins)
     {
       bin = n_bins;
@@ -106,4 +106,42 @@ size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::
   }
   auto end = std::chrono::high_resolution_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+}
+
+Workload generate_workload(std::string name, size_t initial_n, float prop_writes, size_t num_ops, int seed)
+{
+  // Setup randomness
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(0.0, 1.0);
+
+  Workload result;
+  result.name = name;
+  auto initial_data = get_random_data(initial_n, seed);
+  auto valid_reads = initial_data;
+  for (int ix = 0; ix < num_ops; ++ix)
+  {
+    bool is_write = dis(gen) < prop_writes;
+    if (is_write)
+    {
+      Op new_op;
+      new_op.type = WRITE;
+      new_op.key = std::rand();
+      new_op.val = std::rand();
+      result.ops.push_back(new_op);
+      valid_reads.push_back(std::pair<uint32_t, u_int32_t>(new_op.key, new_op.val));
+    }
+    else
+    {
+      Op new_op;
+      new_op.type = READ;
+      new_op.key = valid_reads[std::rand() % valid_reads.size()].first;
+      new_op.val = 0; // Arbitrary
+      result.ops.push_back(new_op);
+    }
+  }
+}
+
+std::pair<size_t, size_t> benchmark_workload_config(Workload workload, Configuration config)
+{
 }

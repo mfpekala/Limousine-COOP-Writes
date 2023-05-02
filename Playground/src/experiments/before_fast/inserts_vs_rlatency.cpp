@@ -34,11 +34,20 @@ namespace
   // Input
   size_t epsilon = 128;
   size_t epsilon_recursive = 16;
-  size_t n = 1000000;
-  size_t num_inserts = 1000000;
-  size_t granularity = 100000;
+  size_t n = 100000;
+  size_t num_inserts = 100000;
+  size_t granularity = 10000;
   size_t num_reads = 100000;
   std::vector<int> seeds = {1, 2, 3};
+
+  struct Configuration
+  {
+    std::string name;
+    float fill_ratio;
+    float fill_ratio_recursive;
+    size_t max_buffer_size;
+    size_t split_neighborhood;
+  };
 
   std::vector<Configuration> get_configs()
   {

@@ -26,106 +26,79 @@
 #include <utility>
 #include <vector>
 #include <chrono>
-#include "debug/metrics.hpp"
+// #include "debug/metrics.hpp"
 
 namespace pgm
 {
     /**
-     * A space-efficient index that enables fast search operations on a sorted sequence of @c n numbers.
-     *
-     * A search returns a struct @ref ApproxPos containing an approximate position of the sought key in the sequence and
-     * the bounds of a range of size 2*Epsilon+1 where the sought key is guaranteed to be found if present.
-     * If the key is not present, the range is guaranteed to contain a key that is not less than (i.e. greater or equal to)
-     * the sought key, or @c n if no such key is found.
-     * In the case of repeated keys, the index finds the position of the first occurrence of a key.
-     *
-     * The @p Epsilon template parameter should be set according to the desired space-time trade-off. A smaller value
-     * makes the estimation more precise and the range smaller but at the cost of increased space usage.
-     *
-     * Internally the index uses a succinct piecewise linear mapping from keys to their position in the sorted order.
-     * This mapping is represented as a sequence of linear models (segments) which, if @p EpsilonRecursive is not zero, are
-     * themselves recursively indexed by other piecewise linear mappings.
-     *
-     * Inserts are handled by keeping a buffer on top of every segment of keys that "want" to live in this segment
-     * but can't because their inclusion would destroy the Epsilon bounds of the segment. More logic concerning
-     * the process of merging and deleting is coming soon.
-     *
-     * @tparam K the type of the indexed keys
-     * @tparam V the type of the indexed values
-     * @tparam Epsilon controls the size of the returned search range
-     * @tparam EpsilonRecursive controls the size of the search range in the internal structure
-     * @tparam The floating-point type to use for slopes
+     * @tparam K - the type of keys in the data structure
+     * @tparam V - the type of values in the data structure
      */
     template <typename K, typename V>
     class BufferedPGMIndex
     {
     public:
-        struct Segment;
-        struct Iterator;
-        using Level = std::vector<Segment>;
-        // Convenient shorthand for type of data and buffer
+        // Types and handy shortnames
+        struct Model;
+
         using Entry = std::pair<K, V>;
         using EntryVector = std::vector<Entry>;
-        using segment_iterator = typename std::vector<Segment>::const_iterator;
-        using data_iterator = typename EntryVector::const_iterator;
+        using DataLevel = std::vector<EntryVector>;
+        using BufferLevel = std::vector<EntryVector>;
+        using ModelLevel = std::vector<Model>;
+        using ModelTree = std::vector<ModelLevel>;
+        using LeafPos = std::pair<size_t, size_t>;
 
-        // For measuring metrics
-        ReadProfile read_profile;
-        SplitHistory split_history;
-        void reset_read_profile()
+        // Tree structure
+        ModelTree model_tree;
+        DataLevel leaf_data;
+        BufferLevel buffer_data;
+
+        // Parameters
+        size_t eps;
+        size_t reduced_eps;
+        size_t eps_rec;
+        size_t reduced_eps_rec;
+        float fill_ratio;
+        float fill_ratio_rec;
+        size_t buffer_size;
+        size_t split_neighborhood;
+
+        // Helper function to reset these reduced values when passing in something into the constructor
+        void reset_reduced_values()
         {
-            ReadProfile fresh;
-            read_profile = fresh;
-        }
-        void reset_split_history()
-        {
-            SplitHistory fresh;
-            split_history = fresh;
-        }
-        void reset_metrics()
-        {
-            reset_read_profile();
-            reset_split_history();
-        }
-        TreeShape get_tree_shape()
-        {
-            TreeShape result;
-            for (auto &level : levels)
-            {
-                result.level_sizes.push_back(level.size());
-            }
-            return result;
+            reduced_eps = (size_t)((float)eps * fill_ratio);
+            reduced_eps_rec = (size_t)((float)eps_rec * fill_ratio);
         }
 
-        /**
-         * A struct that stores the result of a query to a @ref PGMIndex, that is, a range [@ref lo, @ref hi)
-         * centered around an approximate position @ref pos of the sought key.
-         * NOTE: Similar to ApproxPos of the classic index, but uses iterators instead
-         */
-        struct BufferApproxPos
-        {
-            Iterator pos; ///< The approximate position of the key.
-            Iterator lo;  ///< The lower bound of the range.
-            Iterator hi;  ///< The upper bound of the range.
-        };
-
-        size_t n; ///< The number of elements this index was built on.
-        std::vector<Level> levels;
-
-        /**
-         * Constructs the model given data.
-         * @param first the beginning of the data (iterator)
-         * @param last the end of the data (iterator)
-         * @param epsilon the epsilon value to use for searching for data
-         * @param epsilon_recursive the epsilon value to use for searching for segments higher up the tree
-         * @param segments the vector of segments to build the index on
-         * @param levels_offsets the vector of offsets to build the index on
-         */
+        // Constructor to build the index and set params
         template <typename RandomIt>
-        void build(RandomIt first, RandomIt last, size_t epsilon, size_t epsilon_recursive)
+        BufferedPGMIndex(
+            RandomIt first,
+            RandomIt last,
+            size_t eps = 128,
+            size_t eps_rec = 16,
+            float fill_ratio = 1.0,
+            float fill_ratio_rec = 1.0,
+            size_t buffer_size = 128,
+            size_t split_neighborhood = 4) : eps(eps),
+                                             eps_rec(eps_rec),
+                                             fill_ratio(fill_ratio),
+                                             fill_ratio_rec(fill_ratio_rec),
+                                             buffer_size(buffer_size),
+                                             split_neighborhood(split_neighborhood)
         {
-            auto n = (size_t)std::distance(first, last);
-            if (n == 0)
+            reset_reduced_values();
+            build(first, last, eps, eps_rec);
+        }
+
+        // The function that does the actual building
+        // TODO: Investigate the BIG small BIG pattern
+        template <typename RandomIt>
+        void build(RandomIt first, RandomIt last, size_t eps, size_t rec_eps)
+        {
+            auto n = std::distance(first, last);
+            if (n <= 0)
                 return;
 
             // NOTE: Potentially not the most efficient, but logically easiest to work with as we're
@@ -141,956 +114,593 @@ namespace pgm
                 values.push_back(it->second);
             }
 
-            Level base_level;
-            base_level.reserve(n / epsilon_value * epsilon_value);
+            // Allocate initial guesses for the sizes of what we'll need for the index
+            size_t size_guess = n / (eps * eps);
+            DataLevel base_data;
+            base_data.reserve(size_guess);
+            BufferLevel base_buffers;
+            base_buffers.reserve(size_guess);
+            ModelLevel base_models;
+            base_models.reserve(size_guess);
 
-            // Ignores the last element if the key is the max (sentinel) value
-            auto ignore_last = std::prev(last)->first == std::numeric_limits<K>::max(); // max() is the sentinel value
-            auto last_n = n - ignore_last;
-            last -= ignore_last;
-
-            auto build_level = [&](auto epsilon, auto in_fun, auto out_fun)
-            {
-                auto n_segments = internal::make_segmentation_par(last_n, epsilon, in_fun, out_fun);
-                return n_segments;
-            };
-
-            // Variables for keeping track of the actual data that will float into
-            // the leaf segments
-            size_t cur_seg_size = 0;
-            RandomIt seg_first = first;
-            RandomIt seg_last = first;
+            // For keeping track of nodes as we build them for the base level
+            size_t cur_node_size = 0;
+            RandomIt first_node_data = first;
+            RandomIt last_node_data = last;
 
             auto in_fun = [&](auto i)
             {
-                auto x = keys[i];
-                if (cur_seg_size == 0)
+                K key = keys[i];
+                if (cur_node_size == 0)
                 {
-                    seg_first = std::next(first, i);
+                    first_node_data = std::next(first, i);
                 }
-                cur_seg_size++;
-                seg_last = std::next(first, i + 1);
-                return std::pair<K, size_t>(x, cur_seg_size);
+                cur_node_size++;
+                last_node_data = std::next(first, i + 1);
+                return std::pair<K, size_t>(key, cur_node_size);
             };
 
-            auto out_fun = [&](auto cs)
+            auto out_fun = [&](auto can_seg)
             {
-                cur_seg_size = 0;
-                base_level.emplace_back(this, cs, seg_first, seg_last);
-            };
-            last_n = build_level(epsilon, in_fun, out_fun);
+                EntryVector data(first_node_data, last_node_data);
+                EntryVector buffer;
+                buffer.reserve(buffer_size);
+                auto model = Model(this, cur_node_size, can_seg);
 
-            // Build upper levels
-            levels.push_back(base_level);
-            Level last_level = base_level;
-            Level next_level;
-            while (epsilon_recursive && last_n > 1)
+                base_data.push_back(data);
+                base_buffers.push_back(buffer);
+                base_models.push_back(model);
+
+                cur_node_size = 0;
+            };
+
+            auto build_level = [&](size_t n_els, auto in_fun, auto out_fun)
             {
-                next_level.clear();
-                std::vector<size_t> new_sizes = {0};
-                auto in_fun_rec = [&](auto i)
+                auto n_segments = internal::make_segmentation_par(n_els, eps, in_fun, out_fun);
+                return n_segments;
+            };
+
+            size_t last_n = build_level(n, in_fun, out_fun);
+            leaf_data = base_data;
+            buffer_data = base_buffers;
+            model_tree.push_back(base_models);
+
+            // The above code successfully builds the base level of the model
+            // Now it's time to recursively construct the internal levels
+            while (last_n > 1)
+            {
+                ModelLevel last_level = model_tree.back();
+                ModelLevel next_level;
+                size_t cur_model_size = 0;
+
+                auto rec_in_fun = [&](auto i)
                 {
-                    return std::pair<K, size_t>(last_level[i].first_x, new_sizes.back()++);
+                    K key = last_level[i].first_key;
+                    size_t val = cur_model_size++;
+                    return std::pair<K, size_t>(key, val);
                 };
-                auto out_fun_rec = [&](auto cs)
+
+                auto rec_out_fun = [&](auto can_seg)
                 {
-                    if (new_sizes.back() > 0)
-                    {
-                        Segment new_segment = Segment(this, cs, new_sizes.back());
-                        new_sizes.push_back(0);
-                        next_level.push_back(new_segment);
-                    }
+                    if (cur_model_size <= 0)
+                        return;
+                    Model model = Model(this, cur_model_size, can_seg);
+                    next_level.push_back(model);
+                    cur_model_size = 0;
                 };
-                last_n = build_level(epsilon_recursive, in_fun_rec, out_fun_rec);
-                levels.push_back(next_level);
-                last_level = next_level;
+
+                last_n = build_level(last_n, rec_in_fun, rec_out_fun);
+                model_tree.push_back(next_level);
             }
         }
 
-        /**
-         * Helper function that returns the index of the segment in a given level that should be used
-         * to index a key.
-         */
-        size_t by_level_segment_ix_for_key(const K &key, size_t goal_level)
+        // Each model will index it's elements assuming it has the first one (index 0)
+        // This helper function counts the number of elements before this segment and
+        // returns the proper offset
+        size_t get_offset_into_level(size_t model_ix, size_t level)
         {
-            size_t level = height() - 1;
-            Segment cur_seg = levels[level][0];
+            size_t sum = 0;
+            for (size_t ix = 0; ix < model_ix && ix < model_tree[level].size(); ++ix)
+            {
+                sum += model_tree[level][ix].n;
+            }
+            return sum;
+        }
+
+        // A helper function to return the index you will find a certain key in a level
+        size_t get_ix_into_level(K key, size_t goal_level)
+        {
+            size_t level = model_tree.size() - 1;
+            Model cur_model = model_tree[level][0];
             size_t new_ix = 0;
             while (goal_level < level)
             {
-                size_t pred_ix = cur_seg.predict_pos(key);
-                pred_ix += get_internal_offset_into_level(level, new_ix);
-                size_t lowest_ix = pred_ix > epsilon_recursive_value + 2 ? pred_ix - epsilon_recursive_value - 2 : 0;
-                size_t highest_ix = pred_ix + epsilon_recursive_value + 3 < levels[level - 1].size() ? pred_ix + epsilon_recursive_value + 3 : levels[level - 1].size();
-                // TODO: Make this binary search to go faster
-                // Honestly doesn't really matter unless EpsilonRecursive is big, which it usually isn't.
-                lowest_ix = lowest_ix >= highest_ix ? highest_ix - 1 : lowest_ix;
+                // Predict the window to look
+                size_t pred_ix = cur_model.predict_pos(key);
+                size_t offset = get_offset_into_level(new_ix, level);
+                pred_ix += offset;
+                size_t WINDOW = level > 0 ? eps + 2 : eps_rec + 2;
+                size_t lowest_ix = WINDOW < pred_ix ? pred_ix - WINDOW : 0;
+                size_t highest_ix = pred_ix + WINDOW + 1 < model_tree[level - 1].size() ? pred_ix + WINDOW + 1 : model_tree[level - 1].size();
+                // Find the first model where the _next_ model is too high
                 new_ix = lowest_ix;
-                size_t check_ix = lowest_ix + 1;
-                while (check_ix < highest_ix && key > levels[level - 1][check_ix].get_first_proper_key())
+                while (new_ix + 1 < highest_ix && model_tree[level - 1][new_ix + 1].first_key < key)
                 {
-                    // Go until the first segment where _THE NEXT_ segment's first key is greater than the key
-                    // we're looking for. Setup in such a way that it will never return the sentinel segment,
-                    // only the last one with data.
-                    new_ix++;
-                    check_ix++;
+                    ++new_ix;
                 }
-                cur_seg = levels[level - 1][new_ix];
+                cur_model = model_tree[level - 1][new_ix];
                 level--;
             }
             return new_ix;
         }
 
-        /**
-         * Returns the segment responsible for a given key, that is, the rightmost segment having key <= the sought key.
-         * @param key the value of the element to search for
-         * @return an iterator to the segment responsible for the given key
-         */
-        auto segment_for_key(const K &key)
+        // Returns the index of the leaf model that would contain this key
+        auto leaf_model_for_key(const K &key)
         {
-            return levels[0].begin() + by_level_segment_ix_for_key(key, 0);
+            return model_tree[0].begin() + get_ix_into_level(key, 0);
+        }
+        // The same as above but auto will type it to return a mutable model
+        auto mutable_leaf_model_for_key(const K &key)
+        {
+            return model_tree[0].begin() + get_ix_into_level(key, 0);
         }
 
-        /**
-         * Returns the segment responsible for a given key, that is, the rightmost segment having key <= the sought key.
-         * NOTE: Needed because on inserts we need a mutable non-const type
-         * @param key the value of the element to search for
-         * @return an iterator to the segment responsible for the given key
-         */
-        auto mutable_segment_for_key(const K &key)
+        // A helper function to get the model_ix, data_ix pair that is k elements before
+        LeafPos go_back_by(size_t k, size_t model_ix, size_t data_ix)
         {
-            return levels[0].begin() + by_level_segment_ix_for_key(key, 0);
-        }
-
-    public:
-        size_t epsilon_value = 128;
-        size_t epsilon_recursive_value = 16;
-        float fill_ratio = 0.75;
-        float fill_ratio_recursive = 0.75;
-        size_t reduced_epsilon_value = (size_t)((float)epsilon_value * fill_ratio);
-        size_t reduced_epsilon_recursive_value = (size_t)((float)epsilon_recursive_value * fill_ratio);
-        size_t max_buffer_size = 512;
-        size_t split_neighborhood = 3;
-
-        // Helper function to reset these reduced values when passing in something into the constructor
-        void reset_reduced_values()
-        {
-            reduced_epsilon_value = (size_t)((float)epsilon_value * fill_ratio);
-            reduced_epsilon_recursive_value = (size_t)((float)epsilon_recursive_value * fill_ratio);
-        }
-
-        /**
-         * Constructs the index on the sorted keys in the range [first, last).
-         * NOTE: Constructs the index obeying reduced epsilon, not the original epsilon.
-         * This allows us to be confident that each segment will be able to absorb at least a certain
-         * number of inserts.
-         * @param first, last the range containing the sorted keys to be indexed
-         */
-        template <typename RandomIt>
-        BufferedPGMIndex(
-            RandomIt first,
-            RandomIt last,
-            size_t epsilon = 128,
-            size_t epsilon_recursive = 16,
-            float fill_ratio = 0.75,
-            float fill_ratio_recursive = 0.75,
-            size_t max_buffer_size = 512, size_t split_neighborhood = 4) : epsilon_value(epsilon),
-                                                                           epsilon_recursive_value(epsilon_recursive),
-                                                                           fill_ratio(fill_ratio),
-                                                                           fill_ratio_recursive(fill_ratio_recursive),
-                                                                           max_buffer_size(max_buffer_size),
-                                                                           split_neighborhood(split_neighborhood),
-                                                                           n(std::distance(first, last))
-        {
-            reset_reduced_values();
-            build(first, last, reduced_epsilon_value, reduced_epsilon_recursive_value);
-        }
-
-        /**
-         * Helper function to get internal offsets
-         */
-        size_t get_internal_offset_into_level(size_t level, size_t seg_ix)
-        {
-            size_t sum = 0;
-            for (size_t ix = 0; ix < seg_ix && ix < levels[level].size(); ++ix)
+            size_t new_model_ix = model_ix;
+            size_t new_data_ix = data_ix;
+            while (0 <= new_model_ix && 0 < k)
             {
-                sum += levels[level][ix].n;
-            }
-            return sum;
-        }
-
-        /**
-         * Returns the approximate position and the range where @p key can be found.
-         * @param key the value of the element to search for
-         * @return a struct with the approximate position and bounds of the range
-         */
-        BufferApproxPos search(const K &key)
-        {
-            auto seg_iter = segment_for_key(key);
-            auto ix = seg_iter->predict_pos(key);
-            auto data_iter = seg_iter->ix_to_data_iterator(ix);
-            Iterator pos = Iterator(this, seg_iter, data_iter);
-            Iterator lo = Iterator(pos);
-            Iterator hi = Iterator(pos);
-            lo.go_back_by(epsilon_value + 2);
-            hi.advance_by(epsilon_value + 3);
-            return {pos, lo, hi};
-        }
-
-        /**
-         * Finds the entry of an element with key equivalent to @p key. Returns an iterator pointing to that
-         * entry.
-         * NOTE: Does not search in the insert/delete buffers!
-         * @param key the value of the element to search for
-         * @return an iterator to the entry with key equivalent to @p key, or end() if no such element is found
-         */
-        Iterator findIterator(const K &key)
-        {
-            BufferApproxPos range = search(key);
-            // FOR TESTING, eliminate the actual finding
-            Iterator it = range.lo;
-            // Time this search
-            while (it != range.hi && it != end())
-            {
-                Entry p = *it;
-                if (p.first == key)
+                if (k <= new_data_ix)
                 {
-                    return it;
+                    new_data_ix -= k;
+                    k = 0;
                 }
-                it++;
+                else
+                {
+                    k -= (new_data_ix + 1);
+                    if (new_model_ix == 0)
+                    {
+                        return LeafPos(0, 0);
+                    }
+                    new_model_ix--;
+                    new_data_ix = model_tree[0][new_model_ix].n - 1;
+                }
             }
-            return end();
+            return LeafPos(new_model_ix, new_data_ix);
         }
 
-        /**
-         * Finds the entry of an element with key equivalent to @p key.
-         * @param key the value of the element to search for
-         * @return the entry of the element with key equivalent to @p key, or the maximum value of @p K V if no such element is found
-         */
-        Entry findEntry(const K &key)
+        // A helper function to get the model_ix, data_ix pair that is k elements after
+        LeafPos go_forward_by(size_t k, size_t model_ix, size_t data_ix)
         {
-            Iterator it = findIterator(key);
-            if (it != end())
+            size_t new_model_ix = model_ix;
+            size_t new_data_ix = data_ix;
+            while (new_model_ix < model_tree[0].size() && 0 < k)
             {
-                read_profile.num_data++;
-                return *it;
+                if (new_data_ix + k < model_tree[0][new_model_ix].n)
+                {
+                    new_data_ix += k;
+                    k = 0;
+                }
+                else
+                {
+                    size_t diff = model_tree[0][new_model_ix].n - new_data_ix;
+                    k -= diff;
+                    if (new_model_ix >= model_tree[0].size() - 1)
+                    {
+                        return LeafPos(model_tree[0].size() - 1, model_tree[0].back().n - 1);
+                    }
+                    new_model_ix++;
+                    new_data_ix = 0;
+                }
             }
-            auto seg = *segment_for_key(key);
-            Entry dummy = std::make_pair(key, 0);
-            auto bin_it = std::lower_bound(seg.buffer.begin(), seg.buffer.end(), dummy);
-            if (bin_it != seg.buffer.end() && bin_it->first == key)
-            {
-                read_profile.num_buffer++;
-                return *bin_it;
-            }
-            read_profile.num_ne++;
-            return std::make_pair(std::numeric_limits<K>::max(), std::numeric_limits<V>::max());
+            return LeafPos(new_model_ix, new_data_ix);
         }
 
+        // A helper function to return the position of a key
+        // NOTE: Will return the position that this key _should_ occupy
+        // It's up to the caller to double check if that pos has the key or not
+        // This is useful to not repeat work
+        LeafPos find_pos(const K &key)
+        {
+            // Get the bounds
+            size_t model_ix = get_ix_into_level(key, 0);
+            size_t data_ix = model_tree[0][model_ix].predict_pos(key);
+            size_t WINDOW = eps + 3;
+            auto [start_model_ix, start_data_ix] = go_back_by(WINDOW, model_ix, data_ix);
+
+            size_t check_model_ix = start_model_ix;
+            size_t check_data_ix = start_data_ix;
+            while (check_model_ix < model_tree[0].size())
+            {
+                EntryVector &data = leaf_data[check_model_ix];
+                if (data.size() <= check_data_ix)
+                {
+                    check_model_ix++;
+                    check_data_ix = 0;
+                    continue;
+                }
+                if (data[check_data_ix].first == key)
+                {
+                    return LeafPos(check_model_ix, check_data_ix);
+                }
+                if (key < data[check_data_ix].first)
+                {
+                    return LeafPos(check_model_ix, check_data_ix);
+                }
+                check_data_ix++;
+            }
+            return LeafPos(model_tree[0].size() - 1, leaf_data[model_tree[0].size() - 1].size() - 1);
+        }
+
+        // Finds the value corresponding to a key
+        // TODO: Implement this in an iterator-like way that supports range queries with
+        // better memory performance
         V find(const K &key)
         {
-            return findEntry(key).second;
+            // Get the bounds
+            auto p = find_pos(key);
+            if (leaf_data[p.first][p.second].first != key)
+            {
+                return std::numeric_limits<V>::max();
+            }
+            return leaf_data[p.first][p.second].second;
         }
 
-        /**
-         * Inserts a key-value pair into the index.
-         * @param key the key of the element to insert
-         * @param value the value of the element to insert
-         */
+        inline bool can_absorb_inplace_inserts(size_t mx, size_t level, size_t num_inserts)
+        {
+            Model &model = model_tree[level][mx];
+            return reduced_eps + model.num_inplaces + num_inserts < eps;
+        }
+
+        // A helper function to handle an in-place insert into the tree
+        void handle_inplace_inserts(size_t mx, size_t level, EntryVector &entries)
+        {
+            // It's assumed this mx, level pair satisfies the can_absorb above
+            // Need to handle leaf and internal separately
+            /*if (level == 0)
+            {
+              // Leaf model
+              EntryVector &data = model_tree[0][mx];
+              auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
+              data.insert(insert_iter, entries);
+            }*/
+        }
+
         void insert(K key, V value)
         {
-            size_t seg_ix = by_level_segment_ix_for_key(key, 0);
-            Entry e = std::make_pair(key, value);
-            bool needs_split = levels[0][seg_ix].insert(e);
-            if (needs_split)
+            // First make sure the key doesn't already exist in the leaf data
+            LeafPos exist_pos = find_pos(key);
+            if (leaf_data[exist_pos.first][exist_pos.second].first == key)
             {
-                split(0, seg_ix);
+                leaf_data[exist_pos.first][exist_pos.second].second = value;
+                return;
+            }
+            // Then make sure the key doesn't already exist in the buffer
+            for (size_t ix = 0; ix < buffer_data[exist_pos.first].size(); ++ix)
+            {
+                if (buffer_data[exist_pos.first][ix].first == key)
+                {
+                    buffer_data[exist_pos.first][ix].second = value;
+                    return;
+                }
+            }
+
+            // Now we can be sure that the entry doesn't already exist in the index
+            EntryVector e = {std::pair<K, V>(key, value)};
+            if (can_absorb_inplace_inserts(exist_pos.first, 0, e.size()))
+            {
+                // Can handle as an in place insert
+                handle_inplace_inserts(exist_pos.first, 0, e);
+                return;
+            }
+
+            // Can handle as an out of place insert
+            auto iter = std::lower_bound(
+                buffer_data[exist_pos.first].begin(),
+                buffer_data[exist_pos.first].end(),
+                e[0]);
+            buffer_data[exist_pos.first].insert(iter, e.begin(), e.end());
+
+            if (buffer_data[exist_pos.first].size() > buffer_size)
+            {
+                leaf_split(exist_pos.first);
             }
         }
 
-        /**
-         * A helper function for handling inserts at non-base levels (level > 0).
-         * Note that during split, we can produce an arbitrary number of new segments. Internal
-         * segments have no insert buffers, but are trained at a lower epsilon bound, meaning they
-         * can absorb some but not all inserts.
-         * @param split_level - The level that the split happened at
-         * @param low_split_ix - The index of the lowest segment that participated in the retrain
-         * @param high_split_ix - The index of the highest segment that participated in the retrain
-         * @param new_segs - The new segments generated by retraining this segment on data + buffer
-         */
-        void internal_insert(size_t split_level, size_t low_split_ix, size_t high_split_ix, std::vector<Segment> &new_segs)
+        // Returns the indices (into the level) of the models participating in this merge
+        // Note that the first value is inclusive, and the second is exclusive
+        inline std::pair<size_t, size_t> get_split_window(size_t split_mx, size_t level)
         {
-            split_history.data_movement_by_level[split_level] += new_segs.size();
-            // NOTE: For now we are forcing that the window not include segments with different parents
-            // With more sophisticated code this may be relaxed in the future
-            // A representative element from the original segment (used to find indexes)
-            K first_key = levels[split_level][low_split_ix].get_first_proper_key();
-            if (split_level >= height() - 1)
+            size_t parent_ix = get_ix_into_level(model_tree[level][split_mx].first_key, level + 1);
+            size_t low_mx = split_mx;
+            size_t moved = 0;
+            while (0 < low_mx && moved < split_neighborhood)
             {
-                // Root node
-                // First just update the level
-                levels[split_level].erase(levels[split_level].begin() + low_split_ix, levels[split_level].begin() + high_split_ix);
-                levels[split_level].insert(levels[split_level].begin() + low_split_ix, new_segs.begin(), new_segs.end());
-                size_t last_size = new_segs.size();
-                while (last_size > 1)
-                {
-                    std::vector<size_t> new_sizes = {0};
-                    std::vector<Segment> rec_new_segs;
-                    auto in_fun = [&](auto i)
-                    {
-                        new_sizes.back()++;
-                        return std::pair<K, size_t>(new_segs[i].first_x, new_sizes.back());
-                    };
-                    auto out_fun = [&](auto cs)
-                    {
-                        if (new_sizes.back() > 0)
-                        {
-                            Segment new_seg = Segment(this, cs, new_sizes.back());
-                            rec_new_segs.push_back(new_seg);
-                            new_sizes.push_back(0);
-                        }
-                    };
-                    auto build_segments = [&](auto in_fun, auto out_fun)
-                    {
-                        auto n_segments = internal::make_segmentation_par(last_size, reduced_epsilon_recursive_value, in_fun, out_fun);
-                        return n_segments;
-                    };
-                    last_size = build_segments(in_fun, out_fun);
-                    levels.push_back(rec_new_segs);
-                    new_segs = rec_new_segs;
-                }
-            }
-            else
-            {
-                // If it's not the root, update the parent and the level
-                // The index of the parent of this segment in the level above
-                size_t parent_ix = by_level_segment_ix_for_key(first_key, split_level + 1);
-                Segment *parent_seg = &levels[split_level + 1][parent_ix];
-
-                // Previously, the parent indexed high_split_ix - low_split_ix
-                // Now, it indexes new_segs.size()
-                parent_seg->n += new_segs.size() - (high_split_ix - low_split_ix);
-
-                // The first question we must answer is whether or not this internal segment
-                // can absorb these new segments.
-                bool can_absorb = reduced_epsilon_recursive_value + parent_seg->num_inplaces + new_segs.size() - 1 < epsilon_recursive_value;
-                if (can_absorb)
-                {
-                    parent_seg->num_inplaces += new_segs.size() - 1;
-                    // n += new_segs.size() - 1; TODO: Do we need this?
-                }
-                // Now do the same thing but for the actual level undergoing the split
-                // TODO: Also make this cleaner using std stuff
-                std::vector<Segment> new_split_level;
-                for (size_t ix = 0; ix < low_split_ix; ++ix)
-                {
-                    new_split_level.push_back(levels[split_level][ix]);
-                }
-                for (auto s : new_segs)
-                {
-                    new_split_level.push_back(s);
-                }
-                for (size_t ix = high_split_ix; ix < levels[split_level].size(); ++ix)
-                {
-                    new_split_level.push_back(levels[split_level][ix]);
-                }
-                levels[split_level] = new_split_level;
-                if (!can_absorb && new_segs.size() > high_split_ix - low_split_ix)
-                {
-                    // We need to split this node as well.
-                    split(split_level + 1, parent_ix);
-                }
-            }
-        }
-
-        std::pair<size_t, size_t> get_split_window(size_t split_level, size_t splitting_ix)
-        {
-            K og_first_key = levels[split_level][splitting_ix].get_first_proper_key();
-            size_t og_parent_ix = by_level_segment_ix_for_key(og_first_key, split_level + 1);
-            // First find the low ix
-            size_t low_seg_ix = splitting_ix;
-            size_t low_check_ix = low_seg_ix;
-            K low_first_key = levels[split_level][low_check_ix].get_first_proper_key();
-            size_t low_parent_ix = by_level_segment_ix_for_key(low_first_key, split_level + 1);
-            while (low_check_ix > 0 && splitting_ix - low_seg_ix < split_neighborhood)
-            {
-                low_check_ix--;
-                low_first_key = levels[split_level][low_check_ix].get_first_proper_key();
-                low_parent_ix = by_level_segment_ix_for_key(low_first_key, split_level + 1);
-                if (low_parent_ix == og_parent_ix)
-                {
-                    low_seg_ix = low_check_ix;
-                }
-                else
-                {
+                size_t prev_parent_ix = get_ix_into_level(model_tree[level][low_mx - 1].first_key, level + 1);
+                if (prev_parent_ix != parent_ix)
                     break;
-                }
+                moved++;
+                low_mx--;
             }
-            size_t high_seg_ix = splitting_ix + 1;
-            if (splitting_ix >= levels[split_level].size() - 1)
+            size_t high_mx = split_mx + 1;
+            moved = 0;
+            while (high_mx < model_tree[level].size() && moved < split_neighborhood)
             {
-                high_seg_ix = levels[split_level].size();
+                size_t next_parent_ix = get_ix_into_level(model_tree[level][high_mx].first_key, level + 1);
+                if (next_parent_ix != parent_ix)
+                    break;
+                moved++;
+                high_mx++;
+            }
+
+            return std::pair<size_t, size_t>(low_mx, high_mx);
+        }
+
+        void verify_leaves()
+        {
+            K last_key = model_tree[0][0].first_key;
+            size_t ix = 1;
+            while (ix < model_tree[0].size())
+            {
+                K cur_key = model_tree[0][ix].first_key;
+                if (last_key >= cur_key)
+                {
+                    throw std::invalid_argument("Leaves bad (trad case)");
+                }
+                // Now check if last el of previous buffer is bigger
+                if (buffer_data[ix - 1].size() > 0 && buffer_data[ix - 1].back().first >= cur_key)
+                {
+                    throw std::invalid_argument("Leaves bad (buffer edge case)");
+                }
+                last_key = cur_key;
+                ix++;
+            }
+            // Now check if the buffers are sorted
+            size_t bx = 0;
+            while (bx < buffer_data.size())
+            {
+                if (!std::is_sorted(buffer_data[bx].begin(), buffer_data[bx].end()))
+                {
+                    throw std::invalid_argument("Leaves bad (buffer unsorted)");
+                }
+                ++bx;
+            }
+        }
+
+        void verify_internal_level(size_t level)
+        {
+            K last_key = model_tree[level][0].first_key;
+            size_t ix = 1;
+            while (ix < model_tree[level].size())
+            {
+                K cur_key = model_tree[level][ix].first_key;
+                if (last_key >= cur_key)
+                {
+                    throw std::invalid_argument("Internal bad");
+                }
+                ++ix;
+            }
+        }
+
+        void leaf_split(size_t mx)
+        {
+            auto [low_mx, high_mx] = get_split_window(mx, 0);
+            size_t total_els = 0;
+            for (size_t mx = low_mx; mx < high_mx; ++mx)
+            {
+                total_els += model_tree[0][mx].n + buffer_data[mx].size();
+            }
+
+            LeafPos proper_pos = LeafPos(low_mx, 0);
+            LeafPos buff_pos = LeafPos(low_mx, 0);
+
+            EntryVector next_node;
+            DataLevel new_nodes_data;
+            BufferLevel new_buffers_data;
+            ModelLevel new_models_data;
+
+            size_t feed_ix = low_mx;
+            size_t proper_ix = 0;
+            size_t buffer_ix = 0;
+
+            auto in_fun = [&](size_t i)
+            {
+                bool proper_exhausted = leaf_data[feed_ix].size() <= proper_ix;
+                bool buffer_exhaused = buffer_data[feed_ix].size() <= buffer_ix;
+                if (proper_exhausted && buffer_exhaused)
+                {
+                    // Move on to next model
+                    feed_ix++;
+                    proper_ix = 0;
+                    buffer_ix = 0;
+                    proper_exhausted = leaf_data[feed_ix].size() <= proper_ix;
+                    buffer_exhaused = buffer_data[feed_ix].size() <= buffer_ix;
+                }
+                Entry next_e;
+                if (proper_exhausted)
+                {
+                    next_e = buffer_data[feed_ix][buffer_ix++];
+                }
+                else if (buffer_exhaused)
+                {
+                    next_e = leaf_data[feed_ix][proper_ix++];
+                }
+                else
+                {
+                    K proper_key = leaf_data[feed_ix][proper_ix].first;
+                    K buffer_key = buffer_data[feed_ix][buffer_ix].first;
+                    next_e = proper_key < buffer_key
+                                 ? leaf_data[feed_ix][proper_ix++]
+                                 : buffer_data[feed_ix][buffer_ix++];
+                }
+                next_node.push_back(next_e);
+                return std::pair<K, size_t>(next_e.first, next_node.size() - 1);
+            };
+
+            auto out_fun = [&](auto can_seg)
+            {
+                if (next_node.size() <= 0)
+                    return;
+                EntryVector buf;
+                buf.reserve(buffer_size);
+                auto model = Model(this, next_node.size(), can_seg);
+                new_nodes_data.push_back(EntryVector(next_node));
+                new_buffers_data.push_back(buf);
+                new_models_data.push_back(model);
+                next_node.clear();
+            };
+            internal::make_segmentation_par(total_els, eps, in_fun, out_fun);
+
+            // Now we erase the old buffer and data? (idk if we should do data, didn't before) and replace
+            leaf_data.erase(leaf_data.begin() + low_mx, leaf_data.begin() + high_mx);
+            leaf_data.insert(leaf_data.begin() + low_mx, new_nodes_data.begin(), new_nodes_data.end());
+            buffer_data.erase(buffer_data.begin() + low_mx, buffer_data.begin() + high_mx);
+            buffer_data.insert(buffer_data.begin() + low_mx, new_buffers_data.begin(), new_buffers_data.end());
+            model_tree[0].erase(model_tree[0].begin() + low_mx, model_tree[0].begin() + high_mx);
+            model_tree[0].insert(model_tree[0].begin() + low_mx, new_models_data.begin(), new_models_data.end());
+
+            size_t parent_ix = get_ix_into_level(new_models_data[0].first_key, 1);
+            int change_in_size = new_models_data.size() - (high_mx - low_mx);
+            model_tree[1][parent_ix].n += change_in_size;
+            if (change_in_size > 0)
+                internal_split(parent_ix, 1);
+        }
+
+        void internal_split(size_t split_mx, size_t level)
+        {
+            auto [low_mx, high_mx] = get_split_window(split_mx, level);
+            size_t total_els = 0;
+            for (size_t mx = low_mx; mx < high_mx; ++mx)
+            {
+                total_els += model_tree[level][mx].n;
+            }
+            size_t offset = get_offset_into_level(low_mx, level);
+            ModelLevel new_models;
+            size_t cur_model_size = 0;
+
+            auto in_fun = [&](size_t i)
+            {
+                return std::pair<K, size_t>(model_tree[level - 1][offset + i].first_key, cur_model_size++);
+            };
+
+            auto out_fun = [&](auto can_seg)
+            {
+                if (cur_model_size <= 0)
+                    return;
+                Model model = Model(this, cur_model_size, can_seg);
+                cur_model_size = 0;
+                new_models.push_back(model);
+            };
+
+            internal::make_segmentation_par(total_els, eps_rec, in_fun, out_fun);
+
+            model_tree[level].erase(model_tree[level].begin() + low_mx, model_tree[level].begin() + high_mx);
+            model_tree[level].insert(model_tree[level].begin() + low_mx, new_models.begin(), new_models.end());
+
+            int change_in_size = new_models.size() - (high_mx - low_mx);
+            if (model_tree.size() - 1 <= level)
+            {
+                make_new_root();
             }
             else
             {
-                K high_first_key = levels[split_level][high_seg_ix].get_first_proper_key();
-                size_t high_parent_ix = by_level_segment_ix_for_key(high_first_key, split_level + 1);
-                while (high_seg_ix < levels[split_level].size() && high_seg_ix - splitting_ix < split_neighborhood)
+                size_t parent_ix = get_ix_into_level(new_models[0].first_key, level + 1);
+                model_tree[level + 1][parent_ix].n += change_in_size;
+                if (change_in_size > 0)
+                    internal_split(parent_ix, level + 1);
+            }
+        }
+
+        void make_new_root()
+        {
+            while (model_tree.back().size() > 1)
+            {
+                size_t total_els = model_tree.back().size();
+                ModelLevel new_models;
+                size_t cur_model_size = 0;
+
+                auto in_fun = [&](size_t i)
                 {
-                    high_seg_ix++;
-                    if (high_seg_ix == levels[split_level].size())
-                    {
-                        break;
-                    }
-                    high_first_key = levels[split_level][high_seg_ix].get_first_proper_key();
-                    high_parent_ix = by_level_segment_ix_for_key(high_first_key, split_level + 1);
-                    if (high_parent_ix != og_parent_ix)
-                    {
-                        break;
-                    }
-                }
-            }
-            return std::make_pair(low_seg_ix, high_seg_ix);
-        }
+                    return std::pair<K, size_t>(model_tree.back()[i].first_key, cur_model_size++);
+                };
 
-        /**
-         * This function helps answer the question: given an internal segment, I want an
-         * iterator that points to it's first child in the level below it.
-         */
-        segment_iterator get_first_child(size_t level, size_t seg_ix)
-        {
-            if (level <= 0)
-            {
-                throw std::invalid_argument("Must be an internal segment to have children");
-            }
-            size_t offset = 0;
-            for (size_t ix = 0; ix < seg_ix; ++ix)
-            {
-                offset += levels[level][ix].n;
-            }
-            return levels[level - 1].begin() + offset;
-        }
-
-        /**
-         * A helper function to split a segment (meaning retrain it on the data + buffer + neighbors)
-         * and recursively trigger necessary inserts up the tree
-         * @param splitting_ix - The index of the segment that is being retrained / split
-         */
-        void split(size_t split_level, size_t splitting_ix)
-        {
-            while (split_history.splits_by_level.size() <= split_level)
-            {
-                split_history.splits_by_level.push_back(0);
-            }
-            while (split_history.data_movement_by_level.size() <= split_level)
-            {
-                split_history.data_movement_by_level.push_back(0);
-            }
-            split_history.splits_by_level[split_level]++;
-            // First determine the window that will group up to participate in the merge
-            auto [low_seg_ix, high_seg_ix] = get_split_window(split_level, splitting_ix);
-            bool is_internal = split_level > 0;
-            // How many total elements are going to be in this newly made thing
-            size_t n = 0;
-            for (size_t seg_ix = low_seg_ix; seg_ix < high_seg_ix; ++seg_ix)
-            {
-                n += levels[split_level][seg_ix].n + levels[split_level][seg_ix].buffer.size();
-            }
-            // Update data movement stuff
-            split_history.data_movement_by_level[split_level] += n;
-            // Stuff used for splitting at the leaf level
-            segment_iterator seg_iter = levels[split_level].begin() + low_seg_ix;
-            size_t proper_ix = 0; // Index into proper data
-            size_t buffer_ix = 0; // Index into buffer data
-            std::vector<Entry> temporary_fill;
-            // Stuff used for splitting at internal segments
-            segment_iterator child_iter = is_internal ? get_first_child(split_level, low_seg_ix) : seg_iter;
-            std::vector<size_t> new_sizes = {0};
-            // Common stuff
-            std::vector<Segment> new_segs;
-            auto in_fun = [&](auto i)
-            {
-                // What will get passed down to the piecewise linear model
-                std::pair<K, size_t> inserting;
-
-                if (!is_internal)
+                auto out_fun = [&](auto can_seg)
                 {
-                    // If it's not internal, it's a LEAF insert, in which case we need to look inside
-                    // the data and the buffers and be careful we are getting the right element
-                    if (proper_ix >= seg_iter->n && buffer_ix >= seg_iter->buffer.size())
-                    {
-                        // We have ran out of data to read from this segment, move on to next
-                        proper_ix = 0;
-                        buffer_ix = 0;
-                        seg_iter++;
-                    }
-                    // Is the next insert coming from proper data or buffer
-                    bool is_proper;
-                    if (proper_ix >= seg_iter->n)
-                    {
-                        is_proper = false;
-                    }
-                    else if (buffer_ix >= seg_iter->buffer.size())
-                    {
-                        is_proper = true;
-                    }
-                    else
-                    {
-                        K next_proper = seg_iter->data[proper_ix].first;
-                        K next_buffer = seg_iter->buffer[buffer_ix].first;
-                        is_proper = next_proper < next_buffer;
-                    }
-                    // Get the entry, put it in the temp array, return the key with rank
-                    Entry e = is_proper ? seg_iter->data[proper_ix++] : seg_iter->buffer[buffer_ix++];
-                    temporary_fill.push_back(e);
-                    inserting.first = e.first;
-                    inserting.second = temporary_fill.size();
-                }
-                else
-                {
-                    inserting.first = (child_iter++)->first_x;
-                    inserting.second = new_sizes.back()++;
-                }
+                    if (cur_model_size <= 0)
+                        return;
+                    Model model = Model(this, cur_model_size, can_seg);
+                    cur_model_size = 0;
+                    new_models.push_back(model);
+                };
 
-                return inserting;
-            };
-            auto out_fun = [&](auto cs)
-            {
-                if (!is_internal)
-                {
-                    if (temporary_fill.size() > 0)
-                    {
-                        Segment new_seg = Segment(this, cs, temporary_fill.begin(), temporary_fill.end());
-                        new_segs.push_back(new_seg);
-                    }
-                    temporary_fill.clear();
-                }
-                else
-                {
-                    if (new_sizes.back() > 0)
-                    {
-                        Segment new_seg = Segment(this, cs, new_sizes.back());
-                        new_segs.push_back(new_seg);
-                        new_sizes.push_back(0);
-                    }
-                }
-            };
-            auto build_segments = [&](auto in_fun, auto out_fun)
-            {
-                auto n_segments = internal::make_segmentation_par(n, is_internal ? reduced_epsilon_recursive_value : reduced_epsilon_value, in_fun, out_fun);
-                return n_segments;
-            };
-            size_t n_segments = build_segments(in_fun, out_fun);
-            internal_insert(split_level, low_seg_ix, high_seg_ix, new_segs);
-        }
+                internal::make_segmentation_par(total_els, eps_rec, in_fun, out_fun);
 
-        /**
-         * Returns the number of segments in the last level of the index.
-         * @return the number of segments
-         */
-        size_t segments_count() const
-        {
-            return levels.empty() ? 0 : levels[0].size();
-        }
-
-        /**
-         * Returns the number of segments in the full index, including internal
-         */
-        size_t full_segments_count() const
-        {
-            size_t sum = 0;
-            for (auto &l : levels)
-            {
-                sum += l.size();
+                model_tree.push_back(new_models);
             }
-            return sum;
         }
 
-        /**
-         * Returns the number of levels of the index.
-         * @return the number of levels of the index
-         */
-        size_t height() const
+        void print_tree(size_t smallest_level)
         {
-            return levels.size();
-        }
-
-        /**
-         * Returns the size of the index in bytes.
-         * @return the size of the index in bytes
-         */
-        size_t size_in_bytes() const
-        {
-            // TODO: Fix
-            return 0;
-        }
-
-        Iterator begin() const
-        {
-            auto first_seg = levels[0].begin();
-            return Iterator(this, first_seg, first_seg->data.begin());
-        }
-        Iterator end() const
-        {
-            auto last_seg = levels[0].end();
-            return Iterator(this, last_seg, last_seg->data.end());
-        }
-
-        void print_tree(int lowest_level = 0)
-        {
-            std::cout << "Tree size: " << height() << " levels, " << full_segments_count() << " segments" << std::endl;
-            int level = height() - 1;
-            for (level; level >= lowest_level; --level)
+            std::cout << "Height: " << model_tree.size() << std::endl;
+            int level = model_tree.size() - 1;
+            while (smallest_level <= level && 0 <= level)
             {
-                std::cout << "Level: " << level << std::endl;
-                for (size_t cur_ix = 0; cur_ix < levels[level].size(); ++cur_ix)
+                std::cout << "Level: " << level << ", num_segs: " << model_tree[level].size() << std::endl;
+                for (size_t mx = 0; mx < model_tree[level].size(); ++mx)
                 {
-                    std::cout << "(ix:" << cur_ix << ", " << levels[level][cur_ix].get_first_proper_key() << ", sz:" << levels[level][cur_ix].n << ")"
-                              << " - ";
+                    std::cout << "(ix: " << mx
+                              << ", fk: " << model_tree[level][mx].first_key
+                              << ", n: " << model_tree[level][mx].n
+                              << "), ";
                 }
                 std::cout << std::endl;
+                level--;
             }
         }
     };
 
-#pragma pack(push, 1)
+#pragma push pack 1
 
     template <typename K, typename V>
-    struct BufferedPGMIndex<K, V>::Segment
+    struct BufferedPGMIndex<K, V>::Model
     {
-        friend class BufferedPGMIndex;
-        using buffered_pgm_type = BufferedPGMIndex<K, V>;
+        const BufferedPGMIndex<K, V> *super;
+        size_t n;
+        K first_key;
+        float slope;
+        int32_t intercept;
+        size_t num_inplaces = 0;
 
-        const buffered_pgm_type *super; ///< The index this segment belongs to
-        size_t n;                       ///< How many non-buffer entries are indexed by this segment
-        K first_x;                      ///< The first x value (key) in this segment
-        float slope;                    ///< The slope of the segment.
-        int32_t intercept;              ///< The intercept of the segment.
-
-        bool is_internal; ///< Is this an internal segment?
-        // The below `data` and `buffer` only exist on leaf segments
-        EntryVector data;   ///< The data stored in this segment in sorted order by key
-        EntryVector buffer; ///< A buffer of inserts waiting to come to this segment
-
-        // Information about splits
-        size_t num_inplaces = 0; ///< The number of in-place inserts that have been performed on this segment
-
-        Segment(
-            const buffered_pgm_type *super,
+        // Constructor one: specify a model manually (usually used to make dummy models)
+        Model(
+            const BufferedPGMIndex<K, V> *super,
             size_t n,
-            K first_x,
-            float slope,
-            int32_t intercept,
-            bool is_internal) : super(super),
-                                n(n),
-                                first_x(first_x),
-                                slope(slope),
-                                intercept(intercept),
-                                is_internal(is_internal){};
+            K first_key,
+            float slope, int32_t intercept) : super(super), n(n),
+                                              first_key(first_key),
+                                              slope(slope),
+                                              intercept(intercept) {}
 
-        // Constructor for a LEAF segment that takes a canonical segment
-        template <typename RandomIt>
-        explicit Segment(
-            const buffered_pgm_type *super,
-            const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &cs,
-            RandomIt first, RandomIt last)
-            : super(super)
+        // Constructor two (the useful one): specify a model using a "canonical segment" (from original index)
+        Model(
+            const BufferedPGMIndex<K, V> *super,
+            size_t n,
+            const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &can_seg) : super(super), n(n)
         {
-            is_internal = false;
-            first_x = cs.get_first_x();
-            auto [cs_slope, cs_intercept] = cs.get_floating_point_segment(first_x);
-            if (cs_intercept > std::numeric_limits<decltype(intercept)>::max())
-                throw std::overflow_error("Change the type of Segment::intercept to int64");
-            slope = cs_slope;
-            intercept = cs_intercept;
-            n = std::distance(first, last);
-            RandomIt cur = first;
-            std::copy(first, last, std::back_inserter(data));
-            buffer.reserve(super->max_buffer_size);
-        }
-
-        // Constructor for an INTERNAL segment that takes a canonical segment
-        explicit Segment(
-            const buffered_pgm_type *super,
-            const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &cs,
-            size_t n)
-            : super(super),
-              n(n)
-        {
-            is_internal = true;
-            first_x = cs.get_first_x();
-            auto [cs_slope, cs_intercept] = cs.get_floating_point_segment(first_x);
-            if (cs_intercept > std::numeric_limits<decltype(intercept)>::max())
-                throw std::overflow_error("Change the type of Segment::intercept to int64");
+            first_key = can_seg.get_first_x();
+            auto [cs_slope, cs_intercept] = can_seg.get_floating_point_segment(first_key);
             slope = cs_slope;
             intercept = cs_intercept;
         }
 
-        friend inline bool operator<(const Segment &s, const K &k) { return s.first_x < k; }
-        friend inline bool operator<(const K &k, const Segment &s) { return k < s.first_x; }
-        friend inline bool operator<(const Segment &s, const Segment &t) { return s.first_x < t.first_x; }
-
-        operator K() { return first_x; };
-
-        /**
-         * Returns the approximate position of the specified key.
-         * @param k the key whose position must be approximated
-         * @return the approximate position of the specified key
-         */
-        inline size_t operator()(const K &k) const
+        size_t predict_pos(K key)
         {
-            auto pos = int64_t(slope * (k - first_x)) + intercept;
+            auto pos = int64_t(slope * (key - first_key)) + intercept;
             pos = pos > 0 ? size_t(pos) : 0ull;
             pos = pos < n ? pos : n - 1;
             return pos;
         }
-
-        /**
-         * Does the exact same as the above function but is more readable
-         */
-        inline size_t predict_pos(const K &k) const
-        {
-            return this->operator()(k);
-        }
-
-        /**
-         * Checks if the buffer can absorb another out of place write
-         * @return true if the buffer can absorb another out of place write
-         */
-        inline bool buffer_has_space() const
-        {
-            return buffer.size() >= (size_t)((float)super->max_buffer_size);
-        }
-
-        inline data_iterator ix_to_data_iterator(size_t offset) const
-        {
-            if (offset < 0)
-            {
-                return data.cbegin();
-            }
-            if (offset >= n)
-            {
-                return std::prev(data.cend());
-            }
-            return data.cbegin() + offset;
-        }
-
-        /**
-         * A helper function to return the first key in the segment
-         * NOTE: Does not include buffer!
-         */
-        K get_first_proper_key() const
-        {
-            return first_x;
-        }
-
-        /**
-         * A function to perform an insert into a LEAF segment. Returns a boolean indicating whether the
-         * buffer is full _after_ the insert (in which case the parent should trigger
-         * a retrain).
-         * NOTE: If the key already exists it updates the value
-         * @return true (parent needs to retrain) or false
-         */
-        bool insert(const Entry &e)
-        {
-            if (is_internal)
-            {
-                throw std::invalid_argument("Attempted to segment insert into an internal segment");
-            }
-            // First check if the key already exists in the buffer
-            auto existing = std::lower_bound(buffer.begin(), buffer.end(), e);
-            if (existing != buffer.end() && existing->first == e.first)
-            {
-                existing->second = e.second;
-                return false;
-            }
-            // Then see if it already exists "properly" in the segment
-            existing = std::lower_bound(data.begin(), data.end(), e);
-            if (existing != data.end() && existing->first == e.first)
-            {
-                existing->second = e.second;
-                return false;
-            }
-
-            // It does not exist in the segment!
-            // If we can't take any more in place updates send it to the buffer
-            bool is_buffered_insert = super->fill_ratio < 1;
-            if (!is_buffered_insert)
-            {
-                // Note that we care most about the case when we support no in place inserts
-                // This if statement just reduces the amount of silly checking we must do
-                // when we know that we are just going to end up shoving it to the buffer anyway
-                if (super->reduced_epsilon_value + num_inplaces >= super->epsilon_value)
-                {
-                    // If there isn't space for an in-place insert, make it buffered
-                    is_buffered_insert = true;
-                }
-
-                size_t predicted_pos = predict_pos(e.first);
-                size_t actual_pos = std::distance(data.begin(), existing);
-                size_t difference = predicted_pos > actual_pos ? predicted_pos - actual_pos : actual_pos - predicted_pos;
-                if (difference > super->epsilon_value)
-                {
-                    // If the predicted position is too far away from the actual position, make it buffered
-                    // NOTE: THIS is the true "out-of-place" insert
-                    is_buffered_insert = true;
-                }
-            }
-
-            if (is_buffered_insert)
-            {
-                // Insert into sorted position in buffer
-                auto location = std::lower_bound(buffer.begin(), buffer.end(), e);
-                buffer.insert(location, e);
-            }
-            else
-            {
-                // Insert into sorted position in data
-                data.insert(existing, e);
-                num_inplaces++;
-                n++;
-            }
-            return buffer_has_space();
-        }
     };
-
-    template <typename K, typename V>
-    struct BufferedPGMIndex<K, V>::Iterator
-    {
-        friend class BufferedPGMIndex;
-        using buffered_pgm_type = BufferedPGMIndex<K, V>;
-
-        struct Cursor
-        {
-            segment_iterator seg_iter;
-            data_iterator data_iter;
-            Cursor() = default;
-            Cursor(
-                const segment_iterator seg_iter) : segment_iterator(seg_iter){};
-        };
-
-        const buffered_pgm_type *super; //< Pointer to the buffered_pgm that is being iterated
-        Cursor current;                 //< The current cursor
-
-        void advance()
-        {
-            auto end = super->end();
-            if (current.seg_iter == end.current.seg_iter && current.data_iter == end.current.data_iter)
-            {
-                return;
-            }
-            current.data_iter++;
-            if (current.data_iter == current.seg_iter->data.end())
-            {
-                current.seg_iter++;
-                current.data_iter = current.seg_iter->data.begin();
-            }
-        }
-
-        void advance_by(size_t n)
-        {
-            while (n--)
-                advance();
-        }
-
-        void go_back()
-        {
-            auto begin = super->begin();
-            if (current.seg_iter == begin.current.seg_iter && current.data_iter == begin.current.data_iter)
-            {
-                return;
-            }
-            if (current.data_iter != current.seg_iter->data.begin())
-            {
-                current.data_iter--;
-            }
-            else
-            {
-                current.seg_iter--;
-                current.data_iter = current.seg_iter->data.end();
-                current.data_iter--;
-            }
-        }
-
-        void go_back_by(size_t n)
-        {
-            while (n--)
-                go_back();
-        }
-
-        Iterator &operator++()
-        {
-            advance();
-            return *this;
-        }
-
-        Iterator operator++(int)
-        {
-            Iterator tmp = *this;
-            advance();
-            return tmp;
-        }
-
-        Iterator &operator+=(size_t n)
-        {
-            advance_by(n);
-            return *this;
-        }
-
-        Iterator &operator--()
-        {
-            go_back();
-            return *this;
-        }
-
-        Iterator operator--(int)
-        {
-            Iterator tmp = *this;
-            go_back();
-            return tmp;
-        }
-
-        Iterator &operator-=(size_t n)
-        {
-            go_back_by(n);
-            return *this;
-        }
-
-        bool operator==(const Iterator &other) const
-        {
-            return current.seg_iter == other.current.seg_iter && current.data_iter == other.current.data_iter;
-        }
-
-        bool operator!=(const Iterator &other) const
-        {
-            return !(*this == other);
-        }
-
-        const Entry &operator*() const
-        {
-            return *current.data_iter;
-        }
-
-        const Entry *operator->() const
-        {
-            return &(*current.data_iter);
-        }
-
-        Iterator() = default;
-        // Defining an iterator by an iterator into the segment list and an iterator into the data list for that segment
-        Iterator(
-            const buffered_pgm_type *super,
-            const segment_iterator seg_iter,
-            const data_iterator data_iter) : super(super)
-        {
-            current = Cursor();
-            current.seg_iter = seg_iter;
-            current.data_iter = data_iter;
-        };
-        // For copying an iterator
-        Iterator(const Iterator &other) : super(other.super), current(other.current){};
-    };
-
-#pragma pack(pop)
-
 }

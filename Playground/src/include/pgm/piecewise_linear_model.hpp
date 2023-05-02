@@ -101,7 +101,9 @@ namespace pgm::internal
         {
             if (points_in_hull > 0 && x <= last_x)
             {
-                throw std::logic_error("Points must be increasing by x.");
+                // TODO: Shouldn't be like this
+                // throw std::logic_error("Points must be increasing by x.");
+                return true;
             }
 
             last_x = x;

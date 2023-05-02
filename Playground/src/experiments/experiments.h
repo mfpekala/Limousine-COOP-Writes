@@ -6,8 +6,40 @@
 #include <string>
 #include <chrono>
 #include <thread>
+#include <random>
 #include "buffered/pgm_index_buffered.hpp"
 #include "debug/progressbar.hpp"
+
+/* HELPFUL DATA STRUCTURES */
+
+struct Configuration
+{
+  std::string name;
+  float fill_ratio;
+  float fill_ratio_recursive;
+  size_t max_buffer_size;
+  size_t split_neighborhood;
+};
+
+enum OpType
+{
+  READ = 0,
+  WRITE = 1
+};
+
+struct Op
+{
+  OpType type;
+  uint32_t key;
+  uint32_t val;
+};
+
+struct Workload
+{
+  std::string name;
+  std::vector<std::pair<uint32_t, uint32_t>> initial_data;
+  std::vector<Op> ops;
+};
 
 /* HELPER FUNCTIONS */
 
@@ -68,6 +100,23 @@ size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std
  * @param keys - The keys to lookup
  */
 size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys);
+
+/**
+ * A helper function to generate a workload
+ * @param name - Name of the workload (for output / legibility)
+ * @param initial_n - How much data should the workload start with
+ * @param prop_writes - Proportion of writes in the workload
+ * @param num_ops - The number of operations in the workload
+ * @param seed - Random seed to generate data
+ */
+Workload generate_workload(std::string name, size_t initial_n, float prop_writes, size_t num_ops, int seed);
+
+/**
+ * A function that runs a workload using a given configuration and returns the time and memory footprint
+ * @param workload - The workload to run
+ * @param config - The configuration to use for this workload
+ */
+std::pair<size_t, size_t> benchmark_workload_config(Workload workload, Configuration config);
 
 /* EXPERIMENTS */
 
