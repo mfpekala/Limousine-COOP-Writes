@@ -1,5 +1,5 @@
 /**
- * time_workloads_uniform
+ * benchmark_workloads_uniform
  *
  * This experiment aims to give a deeper understanding of the trade-off space of this model.
  * On the x-axis, it will vary the proportion of reads in the workload, and on the y-axis
@@ -129,7 +129,7 @@ namespace
   }
 }
 
-void run_time_workloads_uniform(std::string filename)
+void run_benchmark_workloads_uniform(std::string filename)
 {
   std::ofstream fout;
   fout.open(filename);

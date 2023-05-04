@@ -132,4 +132,4 @@ void run_insert_metrics(std::string filename);
 
 void read_inserted(std::string filename);
 
-void run_time_workloads_uniform(std::string filename);
+void run_benchmark_workloads_uniform(std::string filename);

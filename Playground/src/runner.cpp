@@ -41,6 +41,6 @@ void simple_fast()
 
 int main(int argc, char **argv)
 {
-    run_time_workloads_uniform("workloads_uniform.csv");
+    run_benchmark_workloads_uniform("workloads_uniform.csv");
     return 0;
 }
