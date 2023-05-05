@@ -7,40 +7,40 @@
 #include "buffered/pgm_index_buffered.hpp"
 #include "experiments.h"
 
-void simple_fast()
+void debug()
 {
-    auto data = get_random_data(1000000, 1);
-    auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), 64, 8);
+    auto data = get_random_data(100000, 1);
 
-    pgm.print_tree(1);
-    auto inserts = get_random_inserts(1000000, 1000000)[0];
-    for (auto &i : inserts)
-    {
-        pgm.insert(i.first, i.second);
-    }
-    pgm.print_tree(1);
+    Configuration config;
+    config.eps = 64;
+    config.eps_rec = 8;
+    config.fill_ratio = 0.75;
+    config.fill_ratio_rec = 0.75;
+    config.buffer_size = 0;
+    config.split_neighborhood = 0;
 
-    size_t num_errors = 0;
-    auto looking = 2125817040;
-    for (auto &entry : data)
+    auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+        data.begin(),
+        data.end(),
+        config.eps,
+        config.eps_rec,
+        config.fill_ratio,
+        config.fill_ratio_rec,
+        config.buffer_size,
+        config.split_neighborhood);
+
+    auto inserts = get_random_inserts(1e4, 1000);
+    for (auto &insert_data : inserts)
     {
-        volatile auto k = 0;
-        if (entry.first == looking)
-        {
-            k += 1;
-        }
-        auto val = pgm.find(entry.first);
-        if (val != entry.second)
-        {
-            // std::cout << entry.first << std::endl;
-            num_errors++;
-        }
+        do_inserts(pgm, insert_data);
     }
-    std::cout << "num_errors: " << num_errors << std::endl;
+
+    std::cout << pgm.split_history.encode() << std::endl;
 }
 
 int main(int argc, char **argv)
 {
-    run_benchmark_workloads_uniform("workloads_uniform.csv");
+    run_inserts_vs_wlatency("inserts_vs_wlatency.csv");
+    // debug();
     return 0;
 }

@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 #include <chrono>
-// #include "debug/metrics.hpp"
+#include "debug/metrics.hpp"
 
 namespace pgm
 {
@@ -63,6 +63,27 @@ namespace pgm
         float fill_ratio_rec;
         size_t buffer_size;
         size_t split_neighborhood;
+
+        // Metrics
+        inline TreeShape get_tree_shape() const
+        {
+            TreeShape result;
+            for (const auto &level : model_tree)
+                result.level_sizes.push_back(level.size());
+            return result;
+        }
+        ReadProfile read_profile;
+        SplitHistory split_history;
+        inline void log_split(size_t level, size_t data_mvmt)
+        {
+            while (split_history.splits_by_level.size() < level + 1)
+            {
+                split_history.splits_by_level.push_back(0);
+                split_history.data_movement_by_level.push_back(0);
+            }
+            split_history.splits_by_level[level]++;
+            split_history.data_movement_by_level[level] += data_mvmt;
+        }
 
         // Helper function to reset these reduced values when passing in something into the constructor
         void reset_reduced_values()
@@ -343,11 +364,23 @@ namespace pgm
         {
             // Get the bounds
             auto p = find_pos(key);
-            if (leaf_data[p.first][p.second].first != key)
+            if (leaf_data[p.first][p.second].first == key)
             {
-                return std::numeric_limits<V>::max();
+                // It's where it should be
+                read_profile.num_data++;
+                return leaf_data[p.first][p.second].second;
             }
-            return leaf_data[p.first][p.second].second;
+            // It's not where it should be
+            for (auto &el : buffer_data[p.first])
+            {
+                if (el.first == key)
+                {
+                    read_profile.num_buffer++;
+                    return el.second;
+                }
+            }
+            read_profile.num_ne++;
+            return std::numeric_limits<V>::max();
         }
 
         inline bool can_absorb_inplace_inserts(size_t mx, size_t level, size_t num_inserts)
@@ -361,11 +394,13 @@ namespace pgm
         {
             if (level == 0)
             {
-                // Leaf model
+                // At the leaf level we need to go in and actually change the data properly
                 EntryVector &data = leaf_data[mx];
                 auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
                 data.insert(insert_iter, entries.begin(), entries.end());
             }
+            // At all other levels we just need to update the model's num_inplaces
+            model_tree[level][mx].num_inplaces += entries.size();
         }
 
         void insert(K key, V value)
@@ -438,6 +473,7 @@ namespace pgm
             return std::pair<size_t, size_t>(low_mx, high_mx);
         }
 
+        // A helper function intoduced to help debug splitting at the leaf level
         void verify_leaves()
         {
             K last_key = model_tree[0][0].first_key;
@@ -469,6 +505,7 @@ namespace pgm
             }
         }
 
+        // A helper function intoduced to help debug splitting at internal levels
         void verify_internal_level(size_t level)
         {
             K last_key = model_tree[level][0].first_key;
@@ -484,14 +521,21 @@ namespace pgm
             }
         }
 
+        // Splits the model at index mx in the leaf level
         void leaf_split(size_t mx)
         {
+            // Data movement calculation
+            // 1. Total number of elements in data + buffer of all models in window
+            // 2. Total size of models that get added to the tree
+            size_t data_mvmt = 0;
+
             auto [low_mx, high_mx] = get_split_window(mx, 0);
             size_t total_els = 0;
             for (size_t mx = low_mx; mx < high_mx; ++mx)
             {
                 total_els += model_tree[0][mx].n + buffer_data[mx].size();
             }
+            data_mvmt += total_els * sizeof(Entry);
 
             LeafPos proper_pos = LeafPos(low_mx, 0);
             LeafPos buff_pos = LeafPos(low_mx, 0);
@@ -560,6 +604,9 @@ namespace pgm
             buffer_data.insert(buffer_data.begin() + low_mx, new_buffers_data.begin(), new_buffers_data.end());
             model_tree[0].erase(model_tree[0].begin() + low_mx, model_tree[0].begin() + high_mx);
             model_tree[0].insert(model_tree[0].begin() + low_mx, new_models_data.begin(), new_models_data.end());
+            data_mvmt += new_models_data.size() * sizeof(Model);
+
+            log_split(0, data_mvmt);
 
             size_t parent_ix = get_ix_into_level(new_models_data[0].first_key, 1);
             int change_in_size = new_models_data.size() - (high_mx - low_mx);
@@ -568,8 +615,15 @@ namespace pgm
                 internal_split(parent_ix, 1);
         }
 
+        // Split a model higher up in the tree
         void internal_split(size_t split_mx, size_t level)
         {
+            // Data movement calculation
+            // Unlike in the leaf case, this split doesn't involve any movement of the base
+            // data OR the buffer data. So, data movement is just
+            // 1. Total size of models that get added to the tree
+            size_t data_mvmt = 0;
+
             auto [low_mx, high_mx] = get_split_window(split_mx, level);
             size_t total_els = 0;
             for (size_t mx = low_mx; mx < high_mx; ++mx)
@@ -598,6 +652,9 @@ namespace pgm
 
             model_tree[level].erase(model_tree[level].begin() + low_mx, model_tree[level].begin() + high_mx);
             model_tree[level].insert(model_tree[level].begin() + low_mx, new_models.begin(), new_models.end());
+            data_mvmt += new_models.size() * sizeof(Model);
+
+            log_split(level, data_mvmt);
 
             int change_in_size = new_models.size() - (high_mx - low_mx);
             if (model_tree.size() - 1 <= level)
@@ -617,6 +674,12 @@ namespace pgm
         {
             while (model_tree.back().size() > 1)
             {
+                // Each time we do this, it really should be considered a split at level model_tree.size()
+                size_t level = model_tree.size();
+                // Data movement calculation
+                // Same as internal_split, data_mvmt is just the size of the new models
+                size_t data_mvmt = 0;
+
                 size_t total_els = model_tree.back().size();
                 ModelLevel new_models;
                 size_t cur_model_size = 0;
@@ -636,6 +699,8 @@ namespace pgm
                 };
 
                 internal::make_segmentation_par(total_els, reduced_eps_rec, in_fun, out_fun);
+
+                log_split(level, data_mvmt);
 
                 model_tree.push_back(new_models);
             }
