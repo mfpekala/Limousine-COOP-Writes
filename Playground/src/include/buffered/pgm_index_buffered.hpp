@@ -370,6 +370,22 @@ namespace pgm
                 read_profile.num_data++;
                 return leaf_data[p.first][p.second].second;
             }
+
+            /*
+            // SORTED VERSION
+            // It's not where it should be
+            Entry e(key, std::numeric_limits<V>::max());
+            auto iter = std::lower_bound(buffer_data[p.first].begin(), buffer_data[p.first].end(), e);
+            if (iter != buffer_data[p.first].end() && iter->first == key)
+            {
+                read_profile.num_buffer++;
+                return iter->second;
+            }
+            */
+
+            /*
+            // UNSORTED VERSION
+            */
             // It's not where it should be
             for (auto &el : buffer_data[p.first])
             {
@@ -390,17 +406,17 @@ namespace pgm
         }
 
         // A helper function to handle an in-place insert into the tree
-        void handle_inplace_inserts(size_t mx, size_t level, EntryVector &entries)
+        void handle_inplace_inserts(size_t mx, size_t level, Entry e)
         {
             if (level == 0)
             {
                 // At the leaf level we need to go in and actually change the data properly
                 EntryVector &data = leaf_data[mx];
-                auto insert_iter = std::lower_bound(data.begin(), data.end(), entries[0]);
-                data.insert(insert_iter, entries.begin(), entries.end());
+                auto insert_iter = std::lower_bound(data.begin(), data.end(), e);
+                data.insert(insert_iter, e);
             }
             // At all other levels we just need to update the model's num_inplaces
-            model_tree[level][mx].num_inplaces += entries.size();
+            model_tree[level][mx].num_inplaces++;
         }
 
         void insert(K key, V value)
@@ -412,6 +428,25 @@ namespace pgm
                 leaf_data[exist_pos.first][exist_pos.second].second = value;
                 return;
             }
+
+            Entry e = std::pair<K, V>(key, value);
+
+            /*
+            // SORTED VERSION
+            auto iter = std::lower_bound(
+                buffer_data[exist_pos.first].begin(),
+                buffer_data[exist_pos.first].end(),
+                e);
+            if (iter != buffer_data[exist_pos.first].end() && iter->first == key)
+            {
+                iter->second = value;
+                return;
+            }
+            */
+
+            /*
+            // UNSORTED VERSION
+            */
             // Then make sure the key doesn't already exist in the buffer
             for (size_t ix = 0; ix < buffer_data[exist_pos.first].size(); ++ix)
             {
@@ -423,20 +458,23 @@ namespace pgm
             }
 
             // Now we can be sure that the entry doesn't already exist in the index
-            EntryVector e = {std::pair<K, V>(key, value)};
-            if (can_absorb_inplace_inserts(exist_pos.first, 0, e.size()))
+            if (can_absorb_inplace_inserts(exist_pos.first, 0, 1))
             {
                 // Can handle as an in place insert
                 handle_inplace_inserts(exist_pos.first, 0, e);
                 return;
             }
 
-            // Can handle as an out of place insert
-            auto iter = std::lower_bound(
-                buffer_data[exist_pos.first].begin(),
-                buffer_data[exist_pos.first].end(),
-                e[0]);
-            buffer_data[exist_pos.first].insert(iter, e.begin(), e.end());
+            /*
+            // SORTED VERSION
+            // Iter already defined above
+            buffer_data[exist_pos.first].insert(iter, e);
+             */
+
+            /*
+            // UNSORTED VERSION
+            */
+            buffer_data[exist_pos.first].push_back(e);
 
             if (buffer_data[exist_pos.first].size() > buffer_size)
             {
@@ -448,10 +486,11 @@ namespace pgm
         // Note that the first value is inclusive, and the second is exclusive
         inline std::pair<size_t, size_t> get_split_window(size_t split_mx, size_t level)
         {
+            size_t use_neighborhood = split_neighborhood;
             size_t parent_ix = get_ix_into_level(model_tree[level][split_mx].first_key, level + 1);
             size_t low_mx = split_mx;
             size_t moved = 0;
-            while (0 < low_mx && moved < split_neighborhood)
+            while (0 < low_mx && moved < use_neighborhood)
             {
                 size_t prev_parent_ix = get_ix_into_level(model_tree[level][low_mx - 1].first_key, level + 1);
                 if (prev_parent_ix != parent_ix)
@@ -461,7 +500,7 @@ namespace pgm
             }
             size_t high_mx = split_mx + 1;
             moved = 0;
-            while (high_mx < model_tree[level].size() && moved < split_neighborhood)
+            while (high_mx < model_tree[level].size() && moved < use_neighborhood)
             {
                 size_t next_parent_ix = get_ix_into_level(model_tree[level][high_mx].first_key, level + 1);
                 if (next_parent_ix != parent_ix)

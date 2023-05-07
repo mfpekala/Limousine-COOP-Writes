@@ -105,7 +105,7 @@ size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::
 
 Workload generate_workload(std::string name, size_t initial_n, float prop_writes, size_t num_ops, int seed)
 {
-  // Setup randomness
+  // Setup randomness for prop_writes
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_real_distribution<float> dis(0.0, 1.0);
@@ -138,7 +138,73 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
   return result;
 }
 
-std::pair<size_t, size_t> benchmark_workload_config(Workload &workload, Configuration &config)
+std::vector<std::pair<uint32_t, uint32_t>> get_skewed_data(size_t n, float skew)
+{
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  zipfian_int_distribution<int> distribution(0, 9e7, skew);
+
+  std::vector<std::pair<uint32_t, uint32_t>> data_raw(n);
+
+  auto get_pair = [&]()
+  {
+    return std::make_pair(distribution(gen), std::rand());
+  };
+
+  std::generate(data_raw.begin(), data_raw.end(), get_pair);
+  std::sort(data_raw.begin(), data_raw.end());
+  std::vector<std::pair<uint32_t, uint32_t>> data;
+  for (auto &p : data_raw)
+  {
+    if (data.size() && data.back().first == p.first)
+    {
+      continue;
+    }
+    data.push_back(p);
+  }
+  return data;
+}
+
+Workload generate_skewed_workload(std::string name, size_t initial_n, float prop_writes, float skew, size_t num_ops)
+{
+  // Setup randomness for prop_writes
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<float> dis(0.0, 1.0);
+
+  // Setup randomness for inserts
+  std::default_random_engine generator;
+  zipfian_int_distribution<uint32_t> distribution(0, std::numeric_limits<uint32_t>::max(), skew);
+
+  Workload result;
+  result.name = name;
+  result.initial_data = get_skewed_data(initial_n, skew);
+  result.ops = std::vector<Op>(num_ops);
+  // auto valid_reads = initial_data;
+  for (int ix = 0; ix < num_ops; ++ix)
+  {
+    bool is_write = dis(gen) < prop_writes;
+    if (is_write)
+    {
+      Op new_op;
+      new_op.type = WRITE;
+      new_op.key = distribution(generator);
+      new_op.val = std::rand();
+      result.ops.push_back(new_op);
+    }
+    else
+    {
+      Op new_op;
+      new_op.type = READ;
+      new_op.key = result.initial_data[std::rand() % result.initial_data.size()].first;
+      new_op.val = 0; // Arbitrary
+      result.ops.push_back(new_op);
+    }
+  }
+  return result;
+}
+
+std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config)
 {
   auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
       workload.initial_data.begin(),
@@ -159,12 +225,68 @@ std::pair<size_t, size_t> benchmark_workload_config(Workload &workload, Configur
     }
     else
     {
-      pgm.find(op.key);
+      auto test = pgm.find(op.key);
     }
   }
   auto end = std::chrono::high_resolution_clock::now();
 
   size_t time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
   size_t mem = pgm.size_in_bytes();
-  return std::make_pair(time, mem);
+  return std::make_tuple(time, mem, pgm);
+}
+
+std::tuple<size_t, size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
+    Workload &workload,
+    Configuration &config)
+{
+  auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+      workload.initial_data.begin(),
+      workload.initial_data.end(),
+      config.eps,
+      config.eps_rec,
+      config.fill_ratio,
+      config.fill_ratio_rec,
+      config.buffer_size,
+      config.split_neighborhood);
+
+  double rtime = 0;
+  double wtime = 0;
+  // In order to geed needed precision, nanoseconds are needed below. However,
+  // this would overflow. So, we'll instead add to an accumulator, and every
+  // 10000 operations will divide this by 1e6 to get milliseconds and add to sum.
+  size_t acc = 0;
+  size_t ACC_FREQ = 100000;
+  size_t rtime_acc = 0;
+  size_t wtime_acc = 0;
+  auto start = std::chrono::high_resolution_clock::now();
+  auto end = std::chrono::high_resolution_clock::now();
+  for (auto &op : workload.ops)
+  {
+    acc++;
+    if (op.type == WRITE)
+    {
+      start = std::chrono::high_resolution_clock::now();
+      pgm.insert(op.key, op.val);
+      end = std::chrono::high_resolution_clock::now();
+      wtime_acc += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    }
+    else
+    {
+      start = std::chrono::high_resolution_clock::now();
+      auto test = pgm.find(op.key);
+      end = std::chrono::high_resolution_clock::now();
+      rtime_acc += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    }
+    if (acc % ACC_FREQ == 0)
+    {
+      rtime += rtime_acc / 1e6;
+      wtime += wtime_acc / 1e6;
+      rtime_acc = 0;
+      wtime_acc = 0;
+    }
+  }
+  rtime += rtime_acc / 1e6;
+  wtime += wtime_acc / 1e6;
+  size_t mem = pgm.size_in_bytes();
+  return std::make_tuple(rtime, wtime, mem, pgm);
 }

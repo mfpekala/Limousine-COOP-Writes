@@ -9,15 +9,20 @@
 
 void debug()
 {
-    auto data = get_random_data(100000, 1);
+    auto data = get_skewed_data(1000000, 0.5);
+
+    for (auto &d : data)
+    {
+        std::cout << d.first << " " << d.second << std::endl;
+    }
 
     Configuration config;
     config.eps = 64;
     config.eps_rec = 8;
-    config.fill_ratio = 0.75;
-    config.fill_ratio_rec = 0.75;
-    config.buffer_size = 0;
-    config.split_neighborhood = 0;
+    config.fill_ratio = 1.0;
+    config.fill_ratio_rec = 1.0;
+    config.buffer_size = 64;
+    config.split_neighborhood = 2;
 
     auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
         data.begin(),
@@ -29,18 +34,23 @@ void debug()
         config.buffer_size,
         config.split_neighborhood);
 
-    auto inserts = get_random_inserts(1e4, 1000);
+    auto inserts = get_random_inserts(1000000, 1000000);
     for (auto &insert_data : inserts)
     {
         do_inserts(pgm, insert_data);
     }
+    auto reads = get_random_reads(data, 100000);
+    time_reads(pgm, reads);
 
+    std::cout << pgm.get_tree_shape().encode() << std::endl;
+    std::cout << pgm.read_profile.encode() << std::endl;
     std::cout << pgm.split_history.encode() << std::endl;
 }
 
 int main(int argc, char **argv)
 {
-    run_inserts_vs_wlatency("inserts_vs_wlatency.csv");
+    run_data_vs_latency_breakdown("data_vs_latency_breakdown.csv");
     // debug();
+    // run_compare_workloads("compare_workloads.csv");
     return 0;
 }

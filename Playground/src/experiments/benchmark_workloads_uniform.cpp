@@ -145,7 +145,7 @@ void run_benchmark_workloads_uniform(std::string filename)
         auto workload = generate_workload("workload", initial_n, write_prop, num_ops, seed);
         for (auto &config : configs)
         {
-          auto [time, memory] = benchmark_workload_config(workload, config);
+          auto [time, memory, pgm] = benchmark_workload_config(workload, config);
           fout << config.name << ","
                << seed << ","
                << trial << ","

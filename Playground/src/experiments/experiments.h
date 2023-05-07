@@ -9,6 +9,7 @@
 #include <random>
 #include "buffered/pgm_index_buffered.hpp"
 #include "debug/progressbar.hpp"
+#include "debug/zipfian.h"
 
 /* HELPFUL DATA STRUCTURES */
 
@@ -114,11 +115,40 @@ size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::
 Workload generate_workload(std::string name, size_t initial_n, float prop_writes, size_t num_ops, int seed);
 
 /**
+ * A helper function to generate skewed data
+ * @param n - Number of entries
+ */
+std::vector<std::pair<uint32_t, uint32_t>> get_skewed_data(size_t n, float skew);
+
+/**
+ * A helper function to generate a _skewed_ workload
+ * @param name - Name of the workload (for output / legibility)
+ * @param initial_n - How much data should the workload start with
+ * @param prop_writes - Proportion of writes in the workload
+ * @param skew - The skew of the workload
+ * @param num_ops - The number of operations in the workload
+ * @param seed - Random seed to generate data
+ */
+Workload generate_skewed_workload(std::string name, size_t initial_n, float prop_writes, float skew, size_t num_ops);
+
+/**
  * A function that runs a workload using a given configuration and returns the time and memory footprint
  * @param workload - The workload to run
  * @param config - The configuration to use for this workload
+ * @return (time taken, final memory size, model itself)
  */
-std::pair<size_t, size_t> benchmark_workload_config(Workload &workload, Configuration &config);
+std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config);
+
+/**
+ * A function that runs a workload using a given configuration and returns the time and memory footprint
+ * DIFFERENT from the above because it returns time spent in reads and time spent in writes separately
+ * @param workload - The workload to run
+ * @param config - The configuration to use for this workload
+ * @return (time taken for reads, time taken for writes, final memory size, model itself)
+ */
+std::tuple<size_t, size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
+    Workload &workload,
+    Configuration &config);
 
 /* EXPERIMENTS */
 
@@ -133,3 +163,9 @@ void run_insert_metrics(std::string filename);
 void read_inserted(std::string filename);
 
 void run_benchmark_workloads_uniform(std::string filename);
+
+void run_mem_perf_tradeoff(std::string filename);
+
+void run_compare_workloads(std::string filename);
+
+void run_data_vs_latency_breakdown(std::string filename);
