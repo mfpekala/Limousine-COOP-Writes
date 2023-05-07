@@ -357,6 +357,8 @@ namespace pgm
             return LeafPos(model_tree[0].size() - 1, leaf_data[model_tree[0].size() - 1].size() - 1);
         }
 
+        // TODO: Function for just `find_seg` which can improve out of place insert even more
+
         // Finds the value corresponding to a key
         // TODO: Implement this in an iterator-like way that supports range queries with
         // better memory performance
@@ -421,63 +423,36 @@ namespace pgm
 
         void insert(K key, V value)
         {
-            // First make sure the key doesn't already exist in the leaf data
-            LeafPos exist_pos = find_pos(key);
-            if (leaf_data[exist_pos.first][exist_pos.second].first == key)
-            {
-                leaf_data[exist_pos.first][exist_pos.second].second = value;
-                return;
-            }
-
+            size_t mx = get_ix_into_level(key, 0);
             Entry e = std::pair<K, V>(key, value);
 
-            /*
-            // SORTED VERSION
-            auto iter = std::lower_bound(
-                buffer_data[exist_pos.first].begin(),
-                buffer_data[exist_pos.first].end(),
-                e);
-            if (iter != buffer_data[exist_pos.first].end() && iter->first == key)
+            if (buffer_size > 0)
             {
-                iter->second = value;
-                return;
-            }
-            */
-
-            /*
-            // UNSORTED VERSION
-            */
-            // Then make sure the key doesn't already exist in the buffer
-            for (size_t ix = 0; ix < buffer_data[exist_pos.first].size(); ++ix)
-            {
-                if (buffer_data[exist_pos.first][ix].first == key)
+                // OUT OF PLACE
+                buffer_data[mx].push_back(e);
+                if (buffer_data[mx].size() > buffer_size)
                 {
-                    buffer_data[exist_pos.first][ix].second = value;
-                    return;
+                    leaf_split(mx);
                 }
             }
-
-            // Now we can be sure that the entry doesn't already exist in the index
-            if (can_absorb_inplace_inserts(exist_pos.first, 0, 1))
+            else
             {
-                // Can handle as an in place insert
-                handle_inplace_inserts(exist_pos.first, 0, e);
-                return;
-            }
+                LeafPos exist_pos = find_pos(key);
+                // IN PLACE
+                // First make sure the key doesn't already exist in the leaf data
+                if (leaf_data[exist_pos.first][exist_pos.second].first == key)
+                {
+                    leaf_data[exist_pos.first][exist_pos.second].second = value;
+                    return;
+                }
 
-            /*
-            // SORTED VERSION
-            // Iter already defined above
-            buffer_data[exist_pos.first].insert(iter, e);
-             */
-
-            /*
-            // UNSORTED VERSION
-            */
-            buffer_data[exist_pos.first].push_back(e);
-
-            if (buffer_data[exist_pos.first].size() > buffer_size)
-            {
+                // Now we can be sure that the entry doesn't already exist in the index
+                if (can_absorb_inplace_inserts(exist_pos.first, 0, 1))
+                {
+                    // Can handle as an in place insert
+                    handle_inplace_inserts(exist_pos.first, 0, e);
+                    return;
+                }
                 leaf_split(exist_pos.first);
             }
         }
@@ -576,8 +551,15 @@ namespace pgm
             }
             data_mvmt += total_els * sizeof(Entry);
 
+            // TODO: Weird bug
+            if (total_els <= 1)
+            {
+                return;
+            }
+
             LeafPos proper_pos = LeafPos(low_mx, 0);
             LeafPos buff_pos = LeafPos(low_mx, 0);
+            K last_key = std::numeric_limits<K>::max();
 
             EntryVector next_node;
             DataLevel new_nodes_data;
@@ -618,7 +600,11 @@ namespace pgm
                                  ? leaf_data[feed_ix][proper_ix++]
                                  : buffer_data[feed_ix][buffer_ix++];
                 }
-                next_node.push_back(next_e);
+                if (next_e.first > last_key)
+                {
+                    next_node.push_back(next_e);
+                }
+                last_key = next_e.first;
                 return std::pair<K, size_t>(next_e.first, next_node.size() - 1);
             };
 

@@ -350,8 +350,7 @@ namespace pgm::internal
         using canonical_segment = typename OptimalPiecewiseLinearModel<X, Y>::CanonicalSegment;
         std::vector<std::vector<canonical_segment>> results(parallelism);
 
-#pragma omp parallel for reduction(+ \
-                                   : c) num_threads(parallelism)
+#pragma omp parallel for reduction(+ : c) num_threads(parallelism)
         for (auto i = 0; i < parallelism; ++i)
         {
             auto first = i * chunk_size;
