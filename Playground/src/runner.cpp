@@ -49,7 +49,7 @@ void debug()
 
 int main(int argc, char **argv)
 {
-    run_data_vs_latency_breakdown("data_vs_latency_breakdown.csv");
+    run_better_skew("better_skew.csv");
     // debug();
     // run_compare_workloads("compare_workloads.csv");
     return 0;

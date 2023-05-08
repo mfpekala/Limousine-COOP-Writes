@@ -486,11 +486,10 @@ namespace pgm
         // Note that the first value is inclusive, and the second is exclusive
         inline std::pair<size_t, size_t> get_split_window(size_t split_mx, size_t level)
         {
-            size_t use_neighborhood = split_neighborhood;
             size_t parent_ix = get_ix_into_level(model_tree[level][split_mx].first_key, level + 1);
             size_t low_mx = split_mx;
             size_t moved = 0;
-            while (0 < low_mx && moved < use_neighborhood)
+            while (0 < low_mx && moved < split_neighborhood)
             {
                 size_t prev_parent_ix = get_ix_into_level(model_tree[level][low_mx - 1].first_key, level + 1);
                 if (prev_parent_ix != parent_ix)
@@ -500,7 +499,7 @@ namespace pgm
             }
             size_t high_mx = split_mx + 1;
             moved = 0;
-            while (high_mx < model_tree[level].size() && moved < use_neighborhood)
+            while (high_mx < model_tree[level].size() && moved < split_neighborhood)
             {
                 size_t next_parent_ix = get_ix_into_level(model_tree[level][high_mx].first_key, level + 1);
                 if (next_parent_ix != parent_ix)

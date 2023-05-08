@@ -31,17 +31,16 @@
 namespace
 {
   // Input
-  size_t eps = 128;
-  size_t eps_rec = 64;
+  size_t eps = 64;
+  size_t eps_rec = 16;
   std::vector<size_t> initial_ns = {
-      (size_t)1e6,
-      (size_t)3e6,
-      (size_t)1e7,
-      // (size_t)3e7
-  };
-  std::vector<int> seeds = {1, 2, 3};
-  size_t num_trials = 2;
-  std::vector<float> write_props = {0.2, 0.4, 0.6};
+      //(size_t)1e6,
+      //(size_t)3e6,
+      //(size_t)1e7,
+      (size_t)3e7};
+  std::vector<int> seeds = {1, 2, 3, 4, 5};
+  size_t num_trials = 1;
+  std::vector<float> write_props = {0.2, 0.4};
 
   std::vector<Configuration>
   get_configs()

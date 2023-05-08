@@ -37,16 +37,16 @@
 namespace
 {
   // Input
-  size_t eps = 128;
-  size_t eps_rec = 16;
+  size_t eps = 64;
+  size_t eps_rec = 8;
   size_t initial_n = 1e7;
   size_t num_ops = 1e7;
-  std::vector<int> seeds = {1, 2, 3, 4};
-  size_t num_trials = 1;
-  std::vector<size_t> neighs = {2};
-  std::vector<size_t> bufs = {32, 64};
+  std::vector<int> seeds = {1, 2, 3};
+  size_t num_trials = 3;
+  std::vector<size_t> neighs = {0, 1, 8, 12, 16};
+  std::vector<size_t> bufs = {4, 8, 16, 128, 192, 256};
   size_t fixed_neigh = 2;
-  size_t fixed_buf = 32;
+  size_t fixed_buf = 48;
 
   std::vector<Configuration> get_configs()
   {
@@ -72,7 +72,7 @@ namespace
     Configuration inplace_n0 = base_inplace;
     inplace_n0.name = "inplace_n0";
     inplace_n0.split_neighborhood = 0;
-    result.push_back(inplace_n0);
+    // result.push_back(inplace_n0);
 
     /* TESTED OUTPLACE CONFIGS */
     Configuration outplace_n0 = base_outplace;

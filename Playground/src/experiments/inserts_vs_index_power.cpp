@@ -30,10 +30,10 @@
 namespace
 {
   // Input
-  size_t eps = 128;
-  size_t eps_rec = 16;
-  size_t initial_n = 5e5;
-  size_t num_inserts = 5e5;
+  size_t eps = 64;
+  size_t eps_rec = 8;
+  size_t initial_n = 1e6;
+  size_t num_inserts = 1e6;
   size_t granularity = 1e5;
   std::vector<int> seeds = {1, 2, 3};
 
@@ -74,9 +74,9 @@ namespace
     out_place_n8.split_neighborhood = 8;
 
     return {
-        in_place_n0,
-        out_place_n0,
-        out_place_n2,
+        // in_place_n0,
+        // out_place_n0,
+        // out_place_n2,
         out_place_n8};
   }
 }
