@@ -171,3 +171,5 @@ void run_compare_workloads(std::string filename);
 void run_data_vs_latency_breakdown(std::string filename);
 
 void run_better_skew(std::string filename);
+
+int test_func();
