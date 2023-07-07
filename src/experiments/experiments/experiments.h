@@ -1,3 +1,7 @@
+/**
+ * Definitions for experiments and helper functions/classes to run them.
+ */
+
 #include <vector>
 #include <cstdlib>
 #include <fstream>
@@ -9,7 +13,6 @@
 #include <random>
 #include "buffered/pgm_index_buffered.hpp"
 #include "debug/progressbar.hpp"
-#include "debug/zipfian.h"
 
 /* HELPFUL DATA STRUCTURES */
 

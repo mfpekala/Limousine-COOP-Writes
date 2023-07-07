@@ -340,9 +340,7 @@ namespace pgm::internal
         auto chunk_size = n / parallelism;
         auto c = 0ull;
 
-        // Force not parallel for now
-        bool FORCE_NOT_PARALLEL = false;
-        if (parallelism == 1 || n < 1ull << 15 || FORCE_NOT_PARALLEL)
+        if (parallelism == 1 || n < 1ull << 15)
             return make_segmentation(n, epsilon, in, out);
 
         using X = typename std::invoke_result_t<Fin, size_t>::first_type;
@@ -350,8 +348,7 @@ namespace pgm::internal
         using canonical_segment = typename OptimalPiecewiseLinearModel<X, Y>::CanonicalSegment;
         std::vector<std::vector<canonical_segment>> results(parallelism);
 
-#pragma omp parallel for reduction(+ \
-                                   : c) num_threads(parallelism)
+#pragma omp parallel for reduction(+ : c) num_threads(parallelism)
         for (auto i = 0; i < parallelism; ++i)
         {
             auto first = i * chunk_size;

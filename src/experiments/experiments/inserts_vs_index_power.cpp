@@ -3,7 +3,7 @@
  *
  * This experiment studies how the structure of the model changes as more
  * and more inserts are received. Specifically, we are interested in looking
- * at the average size of a leaf node as a measure of how powerful the structure
+ * at the average size of a leaf node as a proxy for how powerful the structure
  * is. We run this experiment for a variety of configurations with a specified
  * initial size and number of inserts. We also compare the indexing power to a
  * naive model which is trained on the initial data + inserts to see how our

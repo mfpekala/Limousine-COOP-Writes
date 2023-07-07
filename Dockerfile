@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-WORKDIR /playground
+WORKDIR /buffered-pgm
 
 SHELL ["/bin/bash", "-c"]
 
