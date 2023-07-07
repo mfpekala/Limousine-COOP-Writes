@@ -1,4 +1,4 @@
-# Out-of-place PGM
+# Limousine Out-Of-Place Writes
 
 ## Development Environment
 
@@ -29,7 +29,7 @@ from inside the root directory. There are a handful of other helpful `make` comm
 
 - `experiments.h` - Header file including definitions of all shared experiment functions and experiment implementations.
 - `common.cpp` - Helper functions used across various experiments. Examples include helper functions to generate data, time reads, perform inserts, etc.
-- `[experiment_name].cpp` - A specific experiment. You can investigate the comment at the top of the file to get more detailed information.
+- `[experiment_name].cpp` - A specific experiment. Each experiment has a more detailed description at the top of the file which breaks down its aim, input, and output.
 
 Important notes about experiments:
 
