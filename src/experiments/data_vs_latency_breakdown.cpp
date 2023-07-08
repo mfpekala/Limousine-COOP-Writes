@@ -3,7 +3,7 @@
  *
  * This experiment is part of one of the report's final insights surrouding overall performance of the
  * structure relative to in-place. We want to understand the latency of inplace vs a tuned out of place
- * as the data size grows from almost big to actually pretty big. On top of that, we want to understand
+ * as the data size grows. On top of that, we want to understand
  * where this latency is coming from, i.e. what portion of it is coming from reads in the workload vs
  * writes in the workload.
  *
@@ -34,9 +34,7 @@ namespace
   size_t eps = 64;
   size_t eps_rec = 16;
   std::vector<size_t> initial_ns = {
-      //(size_t)1e6,
-      //(size_t)3e6,
-      //(size_t)1e7,
+      (size_t)1e7,
       (size_t)3e7};
   std::vector<int> seeds = {1, 2, 3, 4, 5};
   size_t num_trials = 1;

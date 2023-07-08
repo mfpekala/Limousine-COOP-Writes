@@ -1,3 +1,7 @@
+/**
+ * Definitions for common helper functions for experiments.
+ */
+
 #include "experiments.h"
 
 std::vector<std::pair<uint32_t, uint32_t>> get_random_data(size_t n, int seed)
@@ -51,7 +55,7 @@ std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>
 }
 
 // Helper function to get the average segment size at the leaf level
-size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm)
+size_t get_avg_leaf_size(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm)
 {
   size_t sum = 0;
   for (auto &model : buffered_pgm.model_tree[0])
@@ -61,7 +65,7 @@ size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm
   return sum / buffered_pgm.model_tree[0].size();
 }
 
-std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins, size_t hist_max)
+std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins, size_t hist_max)
 {
   std::vector<size_t> key_vals(n_bins + 1, 0);
   for (auto &model : buffered_pgm.model_tree[0])
@@ -76,7 +80,7 @@ std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::Buffered
   return std::pair<size_t, std::vector<size_t>>(hist_max, key_vals);
 }
 
-void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
+void do_inserts(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
 {
   for (auto &p : insert_data)
   {
@@ -84,7 +88,7 @@ void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::ve
   }
 }
 
-size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
+size_t time_inserts(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
 {
   auto start = std::chrono::high_resolution_clock::now();
   do_inserts(buffered_pgm, insert_data);
@@ -92,7 +96,7 @@ size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
-size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys)
+size_t time_reads(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys)
 {
   auto start = std::chrono::high_resolution_clock::now();
   for (auto &key : keys)
@@ -138,75 +142,9 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
   return result;
 }
 
-std::vector<std::pair<uint32_t, uint32_t>> get_skewed_data(size_t n, float skew)
+std::tuple<size_t, size_t, pgm::OopPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config)
 {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  zipfian_int_distribution<int> distribution(0, 9e7, skew);
-
-  std::vector<std::pair<uint32_t, uint32_t>> data_raw(n);
-
-  auto get_pair = [&]()
-  {
-    return std::make_pair(distribution(gen), std::rand());
-  };
-
-  std::generate(data_raw.begin(), data_raw.end(), get_pair);
-  std::sort(data_raw.begin(), data_raw.end());
-  std::vector<std::pair<uint32_t, uint32_t>> data;
-  for (auto &p : data_raw)
-  {
-    if (data.size() && data.back().first == p.first)
-    {
-      continue;
-    }
-    data.push_back(p);
-  }
-  return data;
-}
-
-Workload generate_skewed_workload(std::string name, size_t initial_n, float prop_writes, float skew, size_t num_ops)
-{
-  // Setup randomness for prop_writes
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dis(0.0, 1.0);
-
-  // Setup randomness for inserts
-  std::default_random_engine generator;
-  zipfian_int_distribution<uint32_t> distribution(0, std::numeric_limits<uint32_t>::max(), skew);
-
-  Workload result;
-  result.name = name;
-  result.initial_data = get_skewed_data(initial_n, skew);
-  result.ops = std::vector<Op>(num_ops);
-  // auto valid_reads = initial_data;
-  for (int ix = 0; ix < num_ops; ++ix)
-  {
-    bool is_write = dis(gen) < prop_writes;
-    if (is_write)
-    {
-      Op new_op;
-      new_op.type = WRITE;
-      new_op.key = distribution(generator);
-      new_op.val = std::rand();
-      result.ops.push_back(new_op);
-    }
-    else
-    {
-      Op new_op;
-      new_op.type = READ;
-      new_op.key = result.initial_data[std::rand() % result.initial_data.size()].first;
-      new_op.val = 0; // Arbitrary
-      result.ops.push_back(new_op);
-    }
-  }
-  return result;
-}
-
-std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config)
-{
-  auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+  auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
       workload.initial_data.begin(),
       workload.initial_data.end(),
       config.eps,
@@ -235,11 +173,11 @@ std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_
   return std::make_tuple(time, mem, pgm);
 }
 
-std::tuple<size_t, size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
+std::tuple<size_t, size_t, size_t, pgm::OopPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
     Workload &workload,
     Configuration &config)
 {
-  auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+  auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
       workload.initial_data.begin(),
       workload.initial_data.end(),
       config.eps,

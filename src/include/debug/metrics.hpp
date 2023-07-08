@@ -1,8 +1,14 @@
+// Definitions for understanding the performance of our structure
+// and algorithms. Most useful for debugging and testing.
+
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 #include <string>
 
+/**
+ * A struct to encode information about the shape of the index
+ */
 struct TreeShape
 {
   std::vector<size_t> level_sizes = {};
@@ -20,6 +26,9 @@ struct TreeShape
   }
 };
 
+/**
+ * A struct to encode information about the read profile of the index
+ */
 struct ReadProfile
 {
   size_t num_data = 0;
@@ -32,6 +41,9 @@ struct ReadProfile
   }
 };
 
+/**
+ * A struct to encode information about the split history of the index
+ */
 struct SplitHistory
 {
   std::vector<size_t> splits_by_level = {};

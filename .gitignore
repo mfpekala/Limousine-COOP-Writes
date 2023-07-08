@@ -1,7 +1,5 @@
-.venv
-deprecated
-Playground/results
-Playground/src/build
+deprecated/
+src/build/
 status.current_container_id
 .vscode
 .DS_Store

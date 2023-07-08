@@ -1,3 +1,7 @@
+/**
+ * Definitions for experiments and helper functions/classes to run them.
+ */
+
 #include <vector>
 #include <cstdlib>
 #include <fstream>
@@ -7,9 +11,8 @@
 #include <chrono>
 #include <thread>
 #include <random>
-#include "buffered/pgm_index_buffered.hpp"
+#include "oop/pgm_index_buffered.hpp"
 #include "debug/progressbar.hpp"
-#include "debug/zipfian.h"
 
 /* HELPFUL DATA STRUCTURES */
 
@@ -72,7 +75,7 @@ std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>
  * Gets the average segment size of leaf segments
  * @param buffered_pgm - A pgm model to analyze
  */
-size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm);
+size_t get_avg_leaf_size(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm);
 
 /**
  * Helper function to get a output-friendly histogram of leaf segment sizes
@@ -81,28 +84,28 @@ size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm
  * @returns a pair (max_val, key_vals) where max_val is the maximum value in the histogram
  * and key_vals[i] is the number of values less than i/key_vals.size() * max_val
  */
-std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins = 20, size_t hist_max = 30000);
+std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins = 20, size_t hist_max = 30000);
 
 /**
  * A helper function to actually do a certain number of inserts on a model
  * @param buffered_pgm - The model to insert into
  * @param data - The inserts to do
  */
-void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
+void do_inserts(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
 
 /**
  * A helper function to do a certain number of inserts and return the time it takes
  * @param buffered_pgm - The model to insert into
  * @param num_inserts - How many inserts to time
  */
-size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
+size_t time_inserts(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data);
 
 /**
  * A helper function to time a certain number of reads on a model
  * @param buffered_pgm - The model to read from
  * @param keys - The keys to lookup
  */
-size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys);
+size_t time_reads(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys);
 
 /**
  * A helper function to generate a workload
@@ -137,7 +140,7 @@ Workload generate_skewed_workload(std::string name, size_t initial_n, float prop
  * @param config - The configuration to use for this workload
  * @return (time taken, final memory size, model itself)
  */
-std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config);
+std::tuple<size_t, size_t, pgm::OopPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config);
 
 /**
  * A function that runs a workload using a given configuration and returns the time and memory footprint
@@ -146,7 +149,7 @@ std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_
  * @param config - The configuration to use for this workload
  * @return (time taken for reads, time taken for writes, final memory size, model itself)
  */
-std::tuple<size_t, size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
+std::tuple<size_t, size_t, size_t, pgm::OopPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
     Workload &workload,
     Configuration &config);
 
@@ -166,10 +169,4 @@ void run_benchmark_workloads_uniform(std::string filename);
 
 void run_mem_perf_tradeoff(std::string filename);
 
-void run_compare_workloads(std::string filename);
-
 void run_data_vs_latency_breakdown(std::string filename);
-
-void run_better_skew(std::string filename);
-
-int test_func();

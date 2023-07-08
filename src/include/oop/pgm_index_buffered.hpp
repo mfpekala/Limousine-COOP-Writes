@@ -1,7 +1,3 @@
-// This file is part of work for CS 265 at Harvard University.
-// The code is based on the original work by the authors of the paper:
-// https://pgm.di.unipi.it/
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -31,16 +27,17 @@
 namespace pgm
 {
     /**
+     * OopPGMIndex is a PGMIndex with a buffer and neighbor merges to
+     * improve performance and memory usage.
      * @tparam K - the type of keys in the data structure
      * @tparam V - the type of values in the data structure
      */
     template <typename K, typename V>
-    class BufferedPGMIndex
+    class OopPGMIndex
     {
     public:
         // Types and handy shortnames
         struct Model;
-
         using Entry = std::pair<K, V>;
         using EntryVector = std::vector<Entry>;
         using DataLevel = std::vector<EntryVector>;
@@ -94,7 +91,7 @@ namespace pgm
 
         // Constructor to build the index and set params
         template <typename RandomIt>
-        BufferedPGMIndex(
+        OopPGMIndex(
             RandomIt first,
             RandomIt last,
             size_t eps = 128,
@@ -113,8 +110,7 @@ namespace pgm
             build(first, last, eps, eps_rec);
         }
 
-        // The function that does the actual building
-        // TODO: Investigate the BIG small BIG pattern
+        // Builds an index initially from a sorted vector of entries
         template <typename RandomIt>
         void build(RandomIt first, RandomIt last, size_t eps, size_t rec_eps)
         {
@@ -122,13 +118,12 @@ namespace pgm
             if (n <= 0)
                 return;
 
-            // NOTE: Potentially not the most efficient, but logically easiest to work with as we're
-            // building the index
+            // Copy the data into vectors
+            // TODO: Can it be more efficient?
             std::vector<K> keys;
             std::vector<V> values;
             keys.reserve(n);
             values.reserve(n);
-            // Could be more efficient by using std::move
             for (auto it = first; it != last; ++it)
             {
                 keys.push_back(it->first);
@@ -149,6 +144,7 @@ namespace pgm
             RandomIt first_node_data = first;
             RandomIt last_node_data = last;
 
+            // Function to ingest data at the base level
             auto in_fun = [&](auto i)
             {
                 K key = keys[i];
@@ -161,6 +157,7 @@ namespace pgm
                 return std::pair<K, size_t>(key, cur_node_size);
             };
 
+            // Function to aggregate models at the base level
             auto out_fun = [&](auto can_seg)
             {
                 EntryVector data(first_node_data, last_node_data);
@@ -175,6 +172,7 @@ namespace pgm
                 cur_node_size = 0;
             };
 
+            // Function to build a level of the model taking advantage of efficient pgm building
             auto build_level = [&](size_t n_els, auto in_fun, auto out_fun)
             {
                 auto n_segments = internal::make_segmentation_par(n_els, eps, in_fun, out_fun);
@@ -187,7 +185,7 @@ namespace pgm
             model_tree.push_back(base_models);
 
             // The above code successfully builds the base level of the model
-            // Now it's time to recursively construct the internal levels
+            // Now we recursively construct the internal levels
             while (last_n > 1)
             {
                 ModelLevel last_level = model_tree.back();
@@ -260,7 +258,6 @@ namespace pgm
         {
             return model_tree[0].begin() + get_ix_into_level(key, 0);
         }
-        // The same as above but auto will type it to return a mutable model
         auto mutable_leaf_model_for_key(const K &key)
         {
             return model_tree[0].begin() + get_ix_into_level(key, 0);
@@ -322,7 +319,6 @@ namespace pgm
         // A helper function to return the position of a key
         // NOTE: Will return the position that this key _should_ occupy
         // It's up to the caller to double check if that pos has the key or not
-        // This is useful to not repeat work
         LeafPos find_pos(const K &key)
         {
             // Get the bounds
@@ -358,8 +354,7 @@ namespace pgm
         }
 
         // Finds the value corresponding to a key
-        // TODO: Implement this in an iterator-like way that supports range queries with
-        // better memory performance
+        // TODO: Should use binary search at base level
         V find(const K &key)
         {
             // Get the bounds
@@ -371,21 +366,6 @@ namespace pgm
                 return leaf_data[p.first][p.second].second;
             }
 
-            /*
-            // SORTED VERSION
-            // It's not where it should be
-            Entry e(key, std::numeric_limits<V>::max());
-            auto iter = std::lower_bound(buffer_data[p.first].begin(), buffer_data[p.first].end(), e);
-            if (iter != buffer_data[p.first].end() && iter->first == key)
-            {
-                read_profile.num_buffer++;
-                return iter->second;
-            }
-            */
-
-            /*
-            // UNSORTED VERSION
-            */
             // It's not where it should be
             for (auto &el : buffer_data[p.first])
             {
@@ -419,6 +399,7 @@ namespace pgm
             model_tree[level][mx].num_inplaces++;
         }
 
+        // For inserting new data into the index
         void insert(K key, V value)
         {
             // First make sure the key doesn't already exist in the leaf data
@@ -431,22 +412,6 @@ namespace pgm
 
             Entry e = std::pair<K, V>(key, value);
 
-            /*
-            // SORTED VERSION
-            auto iter = std::lower_bound(
-                buffer_data[exist_pos.first].begin(),
-                buffer_data[exist_pos.first].end(),
-                e);
-            if (iter != buffer_data[exist_pos.first].end() && iter->first == key)
-            {
-                iter->second = value;
-                return;
-            }
-            */
-
-            /*
-            // UNSORTED VERSION
-            */
             // Then make sure the key doesn't already exist in the buffer
             for (size_t ix = 0; ix < buffer_data[exist_pos.first].size(); ++ix)
             {
@@ -465,15 +430,7 @@ namespace pgm
                 return;
             }
 
-            /*
-            // SORTED VERSION
-            // Iter already defined above
-            buffer_data[exist_pos.first].insert(iter, e);
-             */
-
-            /*
-            // UNSORTED VERSION
-            */
+            // Otherwise we need to add it to the buffer
             buffer_data[exist_pos.first].push_back(e);
 
             if (buffer_data[exist_pos.first].size() > buffer_size)
@@ -507,56 +464,7 @@ namespace pgm
                 moved++;
                 high_mx++;
             }
-
             return std::pair<size_t, size_t>(low_mx, high_mx);
-        }
-
-        // A helper function intoduced to help debug splitting at the leaf level
-        void verify_leaves()
-        {
-            K last_key = model_tree[0][0].first_key;
-            size_t ix = 1;
-            while (ix < model_tree[0].size())
-            {
-                K cur_key = model_tree[0][ix].first_key;
-                if (last_key >= cur_key)
-                {
-                    throw std::invalid_argument("Leaves bad (trad case)");
-                }
-                // Now check if last el of previous buffer is bigger
-                if (buffer_data[ix - 1].size() > 0 && buffer_data[ix - 1].back().first >= cur_key)
-                {
-                    throw std::invalid_argument("Leaves bad (buffer edge case)");
-                }
-                last_key = cur_key;
-                ix++;
-            }
-            // Now check if the buffers are sorted
-            size_t bx = 0;
-            while (bx < buffer_data.size())
-            {
-                if (!std::is_sorted(buffer_data[bx].begin(), buffer_data[bx].end()))
-                {
-                    throw std::invalid_argument("Leaves bad (buffer unsorted)");
-                }
-                ++bx;
-            }
-        }
-
-        // A helper function intoduced to help debug splitting at internal levels
-        void verify_internal_level(size_t level)
-        {
-            K last_key = model_tree[level][0].first_key;
-            size_t ix = 1;
-            while (ix < model_tree[level].size())
-            {
-                K cur_key = model_tree[level][ix].first_key;
-                if (last_key >= cur_key)
-                {
-                    throw std::invalid_argument("Internal bad");
-                }
-                ++ix;
-            }
         }
 
         // Splits the model at index mx in the leaf level
@@ -635,7 +543,7 @@ namespace pgm
             };
             internal::make_segmentation_par(total_els, reduced_eps, in_fun, out_fun);
 
-            // Now we erase the old buffer and data? (idk if we should do data, didn't before) and replace
+            // Now we erase the old buffer
             leaf_data.erase(leaf_data.begin() + low_mx, leaf_data.begin() + high_mx);
             leaf_data.insert(leaf_data.begin() + low_mx, new_nodes_data.begin(), new_nodes_data.end());
             buffer_data.erase(buffer_data.begin() + low_mx, buffer_data.begin() + high_mx);
@@ -708,11 +616,11 @@ namespace pgm
             }
         }
 
+        // Split the root when merges propogate all the way up. This creates another level
         void make_new_root()
         {
             while (model_tree.back().size() > 1)
             {
-                // Each time we do this, it really should be considered a split at level model_tree.size()
                 size_t level = model_tree.size();
                 // Data movement calculation
                 // Same as internal_split, data_mvmt is just the size of the new models
@@ -762,33 +670,18 @@ namespace pgm
 
             return result;
         }
-
-        void print_tree(size_t smallest_level)
-        {
-            std::cout << "Height: " << model_tree.size() << std::endl;
-            int level = model_tree.size() - 1;
-            while (smallest_level <= level && 0 <= level)
-            {
-                std::cout << "Level: " << level << ", num_segs: " << model_tree[level].size() << std::endl;
-                for (size_t mx = 0; mx < model_tree[level].size(); ++mx)
-                {
-                    std::cout << "(ix: " << mx
-                              << ", fk: " << model_tree[level][mx].first_key
-                              << ", n: " << model_tree[level][mx].n
-                              << "), ";
-                }
-                std::cout << std::endl;
-                level--;
-            }
-        }
     };
 
 #pragma push pack 1
 
+    /**
+     * A model in the index. Contains a learned linear approximator (like original PGM)
+     * on data in the level beneath it, as well as a buffer to accept writes.
+     */
     template <typename K, typename V>
-    struct BufferedPGMIndex<K, V>::Model
+    struct OopPGMIndex<K, V>::Model
     {
-        const BufferedPGMIndex<K, V> *super;
+        const OopPGMIndex<K, V> *super;
         size_t n;
         K first_key;
         float slope;
@@ -797,7 +690,7 @@ namespace pgm
 
         // Constructor one: specify a model manually (usually used to make dummy models)
         Model(
-            const BufferedPGMIndex<K, V> *super,
+            const OopPGMIndex<K, V> *super,
             size_t n,
             K first_key,
             float slope, int32_t intercept) : super(super), n(n),
@@ -807,7 +700,7 @@ namespace pgm
 
         // Constructor two (the useful one): specify a model using a "canonical segment" (from original index)
         Model(
-            const BufferedPGMIndex<K, V> *super,
+            const OopPGMIndex<K, V> *super,
             size_t n,
             const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &can_seg) : super(super), n(n)
         {
