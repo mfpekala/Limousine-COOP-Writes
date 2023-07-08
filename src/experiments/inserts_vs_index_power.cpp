@@ -101,7 +101,7 @@ void run_inserts_vs_index_power(std::string filename)
     {
       size_t fixed_epsilon = (size_t)((float)config.eps / config.fill_ratio);
       size_t fixed_epsilon_recursive = (size_t)((float)config.eps_rec / config.fill_ratio_rec);
-      auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+      auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
           data.begin(),
           data.end(),
           fixed_epsilon,
@@ -121,14 +121,14 @@ void run_inserts_vs_index_power(std::string filename)
     }
 
     // Baseline experiment
-    auto first_pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
+    auto first_pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
     fout << "baseline," << initial_n << "," << seed << "," << get_avg_leaf_size(first_pgm) << std::endl;
     size_t clean_size = initial_n;
     for (auto &insert_data : inserts)
     {
       clean_size += insert_data.size();
       data.insert(data.end(), insert_data.begin(), insert_data.end());
-      auto baseline_pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
+      auto baseline_pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
       fout << "baseline," << clean_size << "," << seed << "," << get_avg_leaf_size(baseline_pgm) << std::endl;
     }
     bar.update();

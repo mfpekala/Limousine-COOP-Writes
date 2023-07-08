@@ -55,7 +55,7 @@ std::vector<uint32_t> get_random_reads(std::vector<std::pair<uint32_t, uint32_t>
 }
 
 // Helper function to get the average segment size at the leaf level
-size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm)
+size_t get_avg_leaf_size(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm)
 {
   size_t sum = 0;
   for (auto &model : buffered_pgm.model_tree[0])
@@ -65,7 +65,7 @@ size_t get_avg_leaf_size(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm
   return sum / buffered_pgm.model_tree[0].size();
 }
 
-std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins, size_t hist_max)
+std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, size_t n_bins, size_t hist_max)
 {
   std::vector<size_t> key_vals(n_bins + 1, 0);
   for (auto &model : buffered_pgm.model_tree[0])
@@ -80,7 +80,7 @@ std::pair<size_t, std::vector<size_t>> get_leaf_seg_size_histogram(pgm::Buffered
   return std::pair<size_t, std::vector<size_t>>(hist_max, key_vals);
 }
 
-void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
+void do_inserts(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
 {
   for (auto &p : insert_data)
   {
@@ -88,7 +88,7 @@ void do_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::ve
   }
 }
 
-size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
+size_t time_inserts(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<std::pair<uint32_t, uint32_t>> &insert_data)
 {
   auto start = std::chrono::high_resolution_clock::now();
   do_inserts(buffered_pgm, insert_data);
@@ -96,7 +96,7 @@ size_t time_inserts(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std
   return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }
 
-size_t time_reads(pgm::BufferedPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys)
+size_t time_reads(pgm::OopPGMIndex<uint32_t, uint32_t> &buffered_pgm, std::vector<uint32_t> &keys)
 {
   auto start = std::chrono::high_resolution_clock::now();
   for (auto &key : keys)
@@ -142,9 +142,9 @@ Workload generate_workload(std::string name, size_t initial_n, float prop_writes
   return result;
 }
 
-std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config)
+std::tuple<size_t, size_t, pgm::OopPGMIndex<uint32_t, uint32_t>> benchmark_workload_config(Workload &workload, Configuration &config)
 {
-  auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+  auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
       workload.initial_data.begin(),
       workload.initial_data.end(),
       config.eps,
@@ -173,11 +173,11 @@ std::tuple<size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> benchmark_
   return std::make_tuple(time, mem, pgm);
 }
 
-std::tuple<size_t, size_t, size_t, pgm::BufferedPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
+std::tuple<size_t, size_t, size_t, pgm::OopPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
     Workload &workload,
     Configuration &config)
 {
-  auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+  auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
       workload.initial_data.begin(),
       workload.initial_data.end(),
       config.eps,

@@ -102,7 +102,7 @@ void run_inserts_vs_wlatency(std::string filename)
       {
         size_t fixed_epsilon = (size_t)((float)eps / config.fill_ratio);
         size_t fixed_epsilon_recursive = (size_t)((float)eps_rec / config.fill_ratio_rec);
-        auto pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(
+        auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
             data.begin(),
             data.end(),
             fixed_epsilon,
@@ -120,7 +120,7 @@ void run_inserts_vs_wlatency(std::string filename)
       auto new_data = get_random_data(initial_n, seed);
       auto new_inserts = get_random_inserts(num_inserts, num_inserts)[0];
       new_data.insert(new_data.end(), new_inserts.begin(), new_inserts.end());
-      auto baseline_pgm = pgm::BufferedPGMIndex<uint32_t, uint32_t>(new_data.begin(), new_data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
+      auto baseline_pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(new_data.begin(), new_data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
       auto end = std::chrono::high_resolution_clock::now();
       size_t result = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
       fout << "baseline," << initial_n << "," << seed << "," << result << std::endl;
