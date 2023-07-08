@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-WORKDIR /buffered-pgm
+WORKDIR /oop-pgm
 
 SHELL ["/bin/bash", "-c"]
 
