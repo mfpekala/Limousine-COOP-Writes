@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-WORKDIR /oop-pgm
+WORKDIR /coop-pgm
 
 SHELL ["/bin/bash", "-c"]
 

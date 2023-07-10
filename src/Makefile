@@ -2,7 +2,7 @@ compile:
 	cd build; cmake ..; make && cd ..
 
 runner:
-	cd build; cmake ..; make && ./oop-pgm
+	cd build; cmake ..; make && ./coop-pgm
 
 valgrind-full:
 	valgrind --leak-check=full \

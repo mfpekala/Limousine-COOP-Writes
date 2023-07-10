@@ -119,7 +119,7 @@ void run_insert_metrics(std::string filename)
         // The fixed_ makes it so that the in-place gets a boost so they start at same indexability
         size_t fixed_epsilon = (size_t)((float)eps / config.fill_ratio);
         size_t fixed_epsilon_recursive = (size_t)((float)eps_rec / config.fill_ratio_rec);
-        auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
+        auto pgm = pgm::CoopPGMIndex<uint32_t, uint32_t>(
             data.begin(),
             data.end(),
             fixed_epsilon,
