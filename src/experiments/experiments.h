@@ -13,6 +13,7 @@
 #include <random>
 #include "coop/pgm_index_buffered.hpp"
 #include "debug/progressbar.hpp"
+#include "ALEX/alex.h"
 
 /* HELPFUL DATA STRUCTURES */
 
@@ -152,6 +153,12 @@ std::tuple<size_t, size_t, pgm::CoopPGMIndex<uint32_t, uint32_t>> benchmark_work
 std::tuple<size_t, size_t, size_t, pgm::CoopPGMIndex<uint32_t, uint32_t>> lspecific_benchmark_workload_config(
     Workload &workload,
     Configuration &config);
+
+/**
+ * Same as above but for alex
+ */
+std::tuple<size_t, size_t, size_t> ALEX_lspecific_benchmark_workload_config(
+    Workload &workload);
 
 /* EXPERIMENTS */
 

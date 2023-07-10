@@ -34,9 +34,11 @@ namespace
   size_t eps = 64;
   size_t eps_rec = 16;
   std::vector<size_t> initial_ns = {
+      (size_t)1e6,
+      (size_t)3e6,
       (size_t)1e7,
-      (size_t)3e7};
-  std::vector<int> seeds = {1, 2, 3, 4, 5};
+      (size_t)3e6};
+  std::vector<int> seeds = {1, 2};
   size_t num_trials = 1;
   std::vector<float> write_props = {0.2, 0.4};
 
@@ -48,21 +50,11 @@ namespace
     base_config.eps = eps;
     base_config.eps_rec = eps_rec;
 
-    Configuration base_inplace = base_config;
-    base_inplace.buffer_size = 0;
-    base_inplace.fill_ratio = 0.75;
-    base_inplace.fill_ratio_rec = 0.75;
-
     Configuration base_outplace = base_config;
     base_outplace.buffer_size = 64;
     base_outplace.fill_ratio = 1.0;
     base_outplace.fill_ratio_rec = 1.0;
     base_outplace.split_neighborhood = 2;
-
-    /* TESTED INPLACE CONFIGS */
-    Configuration inplace_n0 = base_inplace;
-    inplace_n0.name = "inplace";
-    inplace_n0.split_neighborhood = 0;
 
     /* TESTED OUTPLACE CONFIGS */
     Configuration outplace_n2_b48 = base_outplace;
@@ -80,17 +72,11 @@ namespace
     outplace_n4_b48.split_neighborhood = 4;
     outplace_n4_b48.buffer_size = 48;
 
-    Configuration outplace_n4_b64 = base_outplace;
-    outplace_n4_b64.name = "outplace_n4_b64";
-    outplace_n4_b64.split_neighborhood = 4;
-    outplace_n4_b64.buffer_size = 64;
-
     return {
-        inplace_n0,
         outplace_n2_b48,
         outplace_n2_b64,
         outplace_n4_b48,
-        outplace_n4_b64};
+    };
   }
 }
 
@@ -100,7 +86,7 @@ void run_data_vs_latency_breakdown(std::string filename)
   fout.open(filename);
   fout << "conf_name,work_name,seed,trial,n,rtime,wtime" << std::endl;
   auto configs = get_configs();
-  progressbar bar(seeds.size() * initial_ns.size() * write_props.size() * num_trials * configs.size());
+  progressbar bar(seeds.size() * initial_ns.size() * write_props.size() * num_trials * (configs.size() + 1));
   for (auto &seed : seeds)
   {
     for (auto &initial_n : initial_ns)
@@ -122,8 +108,20 @@ void run_data_vs_latency_breakdown(std::string filename)
                  << initial_n << ","
                  << rtime << ","
                  << wtime << std::endl;
+            std::cout << "pgm mem " << memory << std::endl;
             bar.update();
           }
+          auto [rtime, wtime, memory] = ALEX_lspecific_benchmark_workload_config(workload);
+          fout << "ALEX"
+               << ","
+               << work_name << ","
+               << seed << ","
+               << trial << ","
+               << initial_n << ","
+               << rtime << ","
+               << wtime << std::endl;
+          std::cout << "ALEX mem " << memory << std::endl;
+          bar.update();
         }
       }
     }

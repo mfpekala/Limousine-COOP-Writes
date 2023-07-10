@@ -228,3 +228,56 @@ std::tuple<size_t, size_t, size_t, pgm::CoopPGMIndex<uint32_t, uint32_t>> lspeci
   size_t mem = pgm.size_in_bytes();
   return std::make_tuple(rtime, wtime, mem, pgm);
 }
+
+std::tuple<size_t, size_t, size_t> ALEX_lspecific_benchmark_workload_config(
+    Workload &workload)
+{
+  alex::Alex<uint32_t, uint32_t> index;
+  std::pair<uint32_t, uint32_t> *safe_data = (std::pair<uint32_t, uint32_t> *)malloc(sizeof(std::pair<uint32_t, uint32_t> *) * workload.initial_data.size());
+  for (int ix = 0; ix < workload.initial_data.size(); ++ix)
+  {
+    safe_data[ix] = workload.initial_data[ix];
+  }
+  index.bulk_load(safe_data, workload.initial_data.size());
+  free(safe_data);
+  double rtime = 0;
+  double wtime = 0;
+  // In order to geed needed precision, nanoseconds are needed below. However,
+  // this would overflow. So, we'll instead add to an accumulator, and every
+  // 10000 operations will divide this by 1e6 to get milliseconds and add to sum.
+  size_t acc = 0;
+  size_t ACC_FREQ = 100000;
+  size_t rtime_acc = 0;
+  size_t wtime_acc = 0;
+  auto start = std::chrono::high_resolution_clock::now();
+  auto end = std::chrono::high_resolution_clock::now();
+  for (auto &op : workload.ops)
+  {
+    acc++;
+    if (op.type == WRITE)
+    {
+      start = std::chrono::high_resolution_clock::now();
+      index.insert(op.key, op.val);
+      end = std::chrono::high_resolution_clock::now();
+      wtime_acc += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    }
+    else
+    {
+      start = std::chrono::high_resolution_clock::now();
+      auto test = index.find(op.key);
+      end = std::chrono::high_resolution_clock::now();
+      rtime_acc += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+    }
+    if (acc % ACC_FREQ == 0)
+    {
+      rtime += rtime_acc / 1e6;
+      wtime += wtime_acc / 1e6;
+      rtime_acc = 0;
+      wtime_acc = 0;
+    }
+  }
+  rtime += rtime_acc / 1e6;
+  wtime += wtime_acc / 1e6;
+  size_t mem = index.model_size();
+  return std::make_tuple(rtime, wtime, mem);
+}

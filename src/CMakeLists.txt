@@ -11,6 +11,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
+if(MSVC)
+    set(CMAKE_CXX_FLAGS "/O2 /arch:AVX2 /W1 /EHsc")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Intel")
+    set(CMAKE_CXX_FLAGS "-O3 -xHost")
+else()
+    # clang and gcc
+    set(CMAKE_CXX_FLAGS "-O3 -march=native -Wall -Wextra")
+endif()
+
 # clangd completion
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
