@@ -119,7 +119,6 @@ namespace pgm
                 return;
 
             // Copy the data into vectors
-            // TODO: Can it be more efficient?
             std::vector<K> keys;
             std::vector<V> values;
             keys.reserve(n);
@@ -354,7 +353,6 @@ namespace pgm
         }
 
         // Finds the value corresponding to a key
-        // TODO: Should use binary search at base level
         V find(const K &key)
         {
             // Get the bounds
