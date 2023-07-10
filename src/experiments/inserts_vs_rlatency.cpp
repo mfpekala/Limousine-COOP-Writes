@@ -99,7 +99,7 @@ void run_inserts_vs_rlatency(std::string filename)
     {
       size_t fixed_epsilon = (size_t)((float)eps_rec / config.fill_ratio);
       size_t fixed_epsilon_recursive = (size_t)((float)eps_rec / config.fill_ratio_rec);
-      auto pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(
+      auto pgm = pgm::CoopPGMIndex<uint32_t, uint32_t>(
           data.begin(),
           data.end(),
           fixed_epsilon,
@@ -124,7 +124,7 @@ void run_inserts_vs_rlatency(std::string filename)
     {
       clean_size += insert_data.size();
       data.insert(data.end(), insert_data.begin(), insert_data.end());
-      auto baseline_pgm = pgm::OopPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
+      auto baseline_pgm = pgm::CoopPGMIndex<uint32_t, uint32_t>(data.begin(), data.end(), eps, eps_rec, 1.0, 1.0, 0, 0);
       size_t result = time_reads(baseline_pgm, reads);
       fout << "baseline," << clean_size << "," << seed << "," << result << std::endl;
     }

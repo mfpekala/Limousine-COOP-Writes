@@ -1,15 +1,15 @@
 DOCKER_CMD = docker
 
 BASE_DIR := $(shell pwd)
-WORK_DIR := .
+WORK_DIR := coop-pgm
 
 build:
-	${DOCKER_CMD} build -t oop-pgm:1.0 .
+	${DOCKER_CMD} build -t coop-pgm:1.0 .
 
 startcontainer:
 	$(eval DOCKER_CONT_ID := $(shell docker container run \
 		-v $(BASE_DIR)/src:/$(WORK_DIR)/src \
-		-d --rm -t --privileged -i oop-pgm:1.0 bash))
+		-d --rm -t --privileged -i coop-pgm:1.0 bash))
 	echo $(DOCKER_CONT_ID) > status.current_container_id
 
 stopcontainer:

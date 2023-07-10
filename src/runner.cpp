@@ -4,7 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <string>
-#include "oop/pgm_index_buffered.hpp"
+#include "coop/pgm_index_buffered.hpp"
 #include "experiments.h"
 
 int main(int argc, char **argv)

@@ -8,7 +8,7 @@ The dockerfile can be built by running
 
 from inside the root directory. There are a handful of other helpful `make` commands to create a container for this image and use it for testing.
 
-- `make startcontainer` - Starts a container pointing to the `oop-pgm` image generated above. The container `id` is stored in a local file.
+- `make startcontainer` - Starts a container pointing to the `coop-pgm` image generated above. The container `id` is stored in a local file.
 
 - `make shell` - Creates an interactive shell inside the currently active container.
 
@@ -18,8 +18,8 @@ from inside the root directory. There are a handful of other helpful `make` comm
 
 ### `src/include`
 
-- `oop` folder
-  - In keeping with the style of the original index, the `OopPGMIndex` (which admits out-of-place writes into leaf segment buffers) has a header-only implementation in `src/included/oop/pgm_index_buffered.hpp`. It's worth noting that while the `OopPGMIndex` is contained in a different folder, it is included as part of the `pgm` namespace.
+- `coop` folder
+  - In keeping with the style of the original index, the `CoopPGMIndex` (which admits crammed out-of-place writes into leaf segment buffers) has a header-only implementation in `src/included/coop/pgm_index_buffered.hpp`. It's worth noting that while the `CoopPGMIndex` is contained in a different folder, it is included as part of the `pgm` namespace.
 - `debug` folder
   - Header-only implementation of useful index metrics in `metrics.hpp` and a progressbar in `progressbar.hpp`.
 - `pgm` folder

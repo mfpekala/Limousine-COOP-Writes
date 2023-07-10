@@ -27,13 +27,13 @@
 namespace pgm
 {
     /**
-     * OopPGMIndex is a PGMIndex with a buffer and neighbor merges to
+     * CoopPGMIndex is a PGMIndex with a buffer and neighbor merges to
      * improve performance and memory usage.
      * @tparam K - the type of keys in the data structure
      * @tparam V - the type of values in the data structure
      */
     template <typename K, typename V>
-    class OopPGMIndex
+    class CoopPGMIndex
     {
     public:
         // Types and handy shortnames
@@ -91,7 +91,7 @@ namespace pgm
 
         // Constructor to build the index and set params
         template <typename RandomIt>
-        OopPGMIndex(
+        CoopPGMIndex(
             RandomIt first,
             RandomIt last,
             size_t eps = 128,
@@ -679,9 +679,9 @@ namespace pgm
      * on data in the level beneath it, as well as a buffer to accept writes.
      */
     template <typename K, typename V>
-    struct OopPGMIndex<K, V>::Model
+    struct CoopPGMIndex<K, V>::Model
     {
-        const OopPGMIndex<K, V> *super;
+        const CoopPGMIndex<K, V> *super;
         size_t n;
         K first_key;
         float slope;
@@ -690,7 +690,7 @@ namespace pgm
 
         // Constructor one: specify a model manually (usually used to make dummy models)
         Model(
-            const OopPGMIndex<K, V> *super,
+            const CoopPGMIndex<K, V> *super,
             size_t n,
             K first_key,
             float slope, int32_t intercept) : super(super), n(n),
@@ -700,7 +700,7 @@ namespace pgm
 
         // Constructor two (the useful one): specify a model using a "canonical segment" (from original index)
         Model(
-            const OopPGMIndex<K, V> *super,
+            const CoopPGMIndex<K, V> *super,
             size_t n,
             const typename internal::OptimalPiecewiseLinearModel<K, size_t>::CanonicalSegment &can_seg) : super(super), n(n)
         {
