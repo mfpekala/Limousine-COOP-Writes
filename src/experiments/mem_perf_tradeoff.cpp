@@ -101,8 +101,7 @@ std::vector<Configuration> get_configs() {
 
 std::vector<Workload> get_workloads(int seed, bool zipfian) {
   Workload wp2, wp4;
-  const float alpha =
-      1.05;  // Experimentally seems representative given no-dupe
+  const float alpha = 1.1;  // Experimentally seems representative given no-dupe
   if (!zipfian) {
     wp2 = generate_workload("W20:R80", initial_n, 0.2, num_ops, seed);
     wp4 = generate_workload("W40:R60", initial_n, 0.4, num_ops, seed);
